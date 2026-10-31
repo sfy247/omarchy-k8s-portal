@@ -1,0 +1,92 @@
+# Operate → Request action: ask the platform team for help, with the
+# service's context attached, as an issue in the platform repo.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: request-help
+  title: Request help from the platform team
+  description: >-
+    Open an issue for the platform team about a running service, with its
+    environment, dashboards and Argo CD links filled in.
+  tags: [operate, support, approved]
+spec:
+  owner: group:default/platform-team
+  type: operation
+
+  parameters:
+    - title: What's wrong
+      required: [service, environment, summary, urgency]
+      properties:
+        service:
+          title: Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: service
+            defaultKind: Component
+            allowArbitraryValues: false
+        environment:
+          title: Environment
+          type: string
+          enum: [dev]
+          default: dev
+        summary:
+          title: Summary
+          type: string
+          maxLength: 100
+          ui:autofocus: true
+        urgency:
+          title: Urgency
+          type: string
+          enum: [Service down, Degraded, Question]
+          default: Degraded
+        details:
+          title: Details
+          description: What you saw, what you already tried, links.
+          type: string
+          ui:widget: textarea
+          ui:options:
+            rows: 6
+
+  steps:
+    - id: platform
+      name: Look up the platform repo
+      action: catalog:fetch
+      input:
+        entityRef: resource:default/platform-gitops-repo
+
+    # The service's folder in the platform repo: apps/<group>/<app label>
+    - id: service
+      name: Look up the service
+      action: catalog:fetch
+      input:
+        entityRef: ${{ parameters.service }}
+
+    - id: issue
+      name: Open the issue
+      action: github:issues:create
+      input:
+        repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
+        title: "[${{ parameters.urgency }}] ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} (${{ parameters.environment }}): ${{ parameters.summary }}"
+        body: |
+          **Service:** `${{ parameters.service }}` (group `${{ steps['service'].output.entity.spec.system }}`, app `${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}`)
+          **Environment:** ${{ parameters.environment }}
+          **Urgency:** ${{ parameters.urgency }}
+          **Owner:** ${{ steps['service'].output.entity.spec.owner }}
+
+          ${{ parameters.details or '_No details given._' }}
+
+          ---
+          Argo CD application: `${{ steps['service'].output.entity.spec.system }}-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}`.
+          In the portal: Operate → this service → ${{ parameters.environment }} for deployments, health and logs.
+
+          Opened from the developer portal (Operate → Request help).
+
+  output:
+    links:
+      - title: Issue
+        url: ${{ steps['issue'].output.issueUrl }}
+      - title: Back to Operate
+        url: /operate?app=${{ parameters.service | urlencode }}&env=${{ parameters.environment }}

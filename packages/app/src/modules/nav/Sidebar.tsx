@@ -8,11 +8,12 @@ import { NavContentBlueprint } from '@backstage/plugin-app-react';
 import { SidebarLogo } from './SidebarLogo';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
 import ExploreIcon from '@material-ui/icons/Explore';
+import BuildIcon from '@material-ui/icons/Build';
 import SchoolIcon from '@material-ui/icons/School';
 import SearchIcon from '@material-ui/icons/Search';
 import { UserSettingsSignInAvatar } from '@backstage/plugin-user-settings';
 
-// The developer experiences: Create, Discover, Learn (Operate comes next),
+// The developer experiences: Create, Discover, Operate, Learn,
 // plus search across all of them
 export const SidebarContent = NavContentBlueprint.make({
   params: {
@@ -22,6 +23,7 @@ export const SidebarContent = NavContentBlueprint.make({
         <SidebarDivider />
         <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Create" />
         <SidebarItem icon={ExploreIcon} to="/catalog" text="Discover" />
+        <SidebarItem icon={BuildIcon} to="/operate" text="Operate" />
         <SidebarItem icon={SchoolIcon} to="/docs" text="Learn" />
         <SidebarDivider />
         <SidebarItem icon={SearchIcon} to="/search" text="Search" />

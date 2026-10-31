@@ -1,0 +1,83 @@
+# Operate → Request action: Scale a service. Changes the service's platform values
+# through a reviewed pull request; Argo CD applies it once merged.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: scale-service
+  title: Scale a service
+  description: >-
+    Change how many replicas of a service run in an environment.
+  tags: [operate, kubernetes, approved]
+spec:
+  owner: group:default/platform-team
+  type: operation
+
+  parameters:
+    - title: Scale
+      required: [service, environment, replicas]
+      properties:
+        service:
+          title: Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: service
+            defaultKind: Component
+            allowArbitraryValues: false
+        environment:
+          title: Environment
+          type: string
+          enum: [dev]
+          default: dev
+        replicas:
+          title: Replicas
+          description: More than one keeps the service up during restarts and node problems.
+          type: integer
+          minimum: 1
+          maximum: 5
+          default: 2
+
+  steps:
+    - id: platform
+      name: Look up the platform repo
+      action: catalog:fetch
+      input:
+        entityRef: resource:default/platform-gitops-repo
+
+    # The service's folder in the platform repo: apps/<group>/<app label>
+    - id: service
+      name: Look up the service
+      action: catalog:fetch
+      input:
+        entityRef: ${{ parameters.service }}
+
+    - id: values
+      name: Update the platform values
+      action: platform:values:set
+      input:
+        url: https://github.com/${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}/${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}/blob/main/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values-${{ parameters.environment }}.yaml
+        targetPath: ./platform/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values-${{ parameters.environment }}.yaml
+        set:
+          replicaCount: ${{ parameters.replicas }}
+
+    - id: platform-pr
+      name: Open the pull request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
+        branchName: portal/scale-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}-${{ context.task.id | truncate(8, true, '') }}
+        title: "Scale ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} in ${{ parameters.environment }} to ${{ parameters.replicas }} replicas"
+        description: |
+          Sets `replicaCount: ${{ parameters.replicas }}` in `values-${{ parameters.environment }}.yaml`.
+
+          Requested in the developer portal (Operate) for `${{ parameters.service }}`.
+        sourcePath: ./platform
+
+  output:
+    links:
+      - title: Pull request
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
+      - title: Back to Operate
+        url: /operate?app=${{ parameters.service | urlencode }}&env=${{ parameters.environment }}

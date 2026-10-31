@@ -71,7 +71,7 @@ spec:
         url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/infra
         targetPath: ./platform
         values:
-          name: ${{ steps['service'].output.entity.metadata.name }}
+          name: ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}
           group: ${{ steps['service'].output.entity.spec.system }}
           database: ${{ parameters.database }}
           image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
@@ -83,7 +83,7 @@ spec:
         url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/platform
         targetPath: ./platform
         values:
-          name: ${{ steps['service'].output.entity.metadata.name }}
+          name: ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}
           group: ${{ steps['service'].output.entity.spec.system }}
           environment: ${{ parameters.environment }}
           image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
@@ -95,7 +95,7 @@ spec:
         url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/deploy
         targetPath: ./platform
         values:
-          name: ${{ steps['service'].output.entity.metadata.name }}
+          name: ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}
           group: ${{ steps['service'].output.entity.spec.system }}
           environment: ${{ parameters.environment }}
 
@@ -104,16 +104,16 @@ spec:
       action: publish:github:pull-request
       input:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
-        branchName: portal/deploy-${{ steps['service'].output.entity.metadata.name }}-${{ parameters.environment }}
-        title: "Deploy ${{ steps['service'].output.entity.metadata.name }} to ${{ parameters.environment }}"
+        branchName: portal/deploy-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}
+        title: "Deploy ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} to ${{ parameters.environment }}"
         description: |
           Requested in the developer portal for `${{ parameters.service }}`.
 
-          - `apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.name }}/`: values for the web-service chart
+          - `apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/`: values for the web-service chart
           - `environments/${{ parameters.environment }}/${{ steps['service'].output.entity.spec.system }}/image-updates/`: keeps ${{ parameters.environment }} on the newest image
 
           After merging, Argo CD deploys it to
-          `https://${{ steps['service'].output.entity.metadata.name }}.${{ parameters.environment }}.<lab domain>`.
+          `https://${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}.${{ parameters.environment }}.<lab domain>`.
           Database requested: ${{ parameters.database }}.
         sourcePath: ./platform
 

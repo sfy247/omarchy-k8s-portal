@@ -1,0 +1,90 @@
+# Operate → Request action: Change resources. Changes the service's platform values
+# through a reviewed pull request; Argo CD applies it once merged.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: change-resources
+  title: Change resources
+  description: >-
+    Change the CPU and memory a service gets in an environment.
+  tags: [operate, kubernetes, approved]
+spec:
+  owner: group:default/platform-team
+  type: operation
+
+  parameters:
+    - title: Resources
+      required: [service, environment, cpu, memory]
+      properties:
+        service:
+          title: Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: service
+            defaultKind: Component
+            allowArbitraryValues: false
+        environment:
+          title: Environment
+          type: string
+          enum: [dev]
+          default: dev
+        cpu:
+          title: CPU request
+          description: Guaranteed CPU per pod (1000m is one core). There's no CPU limit, so pods may burst.
+          type: string
+          enum: [25m, 50m, 100m, 250m, 500m, 1000m]
+          default: 100m
+        memory:
+          title: Memory
+          description: Request and limit per pod. Over the limit the pod is OOM-killed and restarted.
+          type: string
+          enum: [64Mi, 128Mi, 256Mi, 512Mi, 1Gi]
+          default: 256Mi
+
+  steps:
+    - id: platform
+      name: Look up the platform repo
+      action: catalog:fetch
+      input:
+        entityRef: resource:default/platform-gitops-repo
+
+    # The service's folder in the platform repo: apps/<group>/<app label>
+    - id: service
+      name: Look up the service
+      action: catalog:fetch
+      input:
+        entityRef: ${{ parameters.service }}
+
+    - id: values
+      name: Update the platform values
+      action: platform:values:set
+      input:
+        url: https://github.com/${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}/${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}/blob/main/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values-${{ parameters.environment }}.yaml
+        targetPath: ./platform/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values-${{ parameters.environment }}.yaml
+        set:
+          resources.requests.cpu: ${{ parameters.cpu }}
+          resources.requests.memory: ${{ parameters.memory }}
+          resources.limits.memory: ${{ parameters.memory }}
+
+    - id: platform-pr
+      name: Open the pull request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
+        branchName: portal/resources-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}-${{ context.task.id | truncate(8, true, '') }}
+        title: "Resources for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} in ${{ parameters.environment }}: ${{ parameters.cpu }} CPU, ${{ parameters.memory }}"
+        description: |
+          Sets CPU request `${{ parameters.cpu }}` and memory request/limit `${{ parameters.memory }}` in `values-${{ parameters.environment }}.yaml`.
+
+          Requested in the developer portal (Operate) for `${{ parameters.service }}`.
+        sourcePath: ./platform
+
+  output:
+    links:
+      - title: Pull request
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
+      - title: Back to Operate
+        url: /operate?app=${{ parameters.service | urlencode }}&env=${{ parameters.environment }}

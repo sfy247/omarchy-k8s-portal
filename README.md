@@ -10,6 +10,9 @@ Create: select approved template ─> configure ─> create GitHub repo ─> gen
           service repo:   code, Dockerfile, CI caller, catalog-info
           platform PR:    infra values, env values, image roll-out rule
 Deploy a service: provision + deploy for any catalog service (same blocks)
+
+Operate: select application + environment ─> deployments, health, logs
+        ─> investigate (Grafana, Argo CD) or request action (restart, or a PR / issue)
                        │ merge
                        ▼
 Service CI ──> ghcr.io/<owner>/<repo>:sha-<commit>
@@ -21,6 +24,8 @@ Argo CD Image Updater ──> commits the new tag ──> Argo CD deploys to dev
 | Path | Purpose |
 |---|---|
 | `packages/app`, `packages/backend` | The Backstage app (new frontend and backend systems) |
+| `packages/app/src/modules/operate`, `packages/backend/src/operate` | Operate page and its API (`/api/operate`): Argo CD, Prometheus, Alertmanager and Loki, read-only except a rolling restart |
+| `packages/backend/src/scaffolder` | `platform:values:set`: edits only the given keys of a platform values file |
 | `packages/backend/Dockerfile` | Production image: non-root, no SQLite, mkdocs for TechDocs |
 | `app-config.production.yaml` | Generic production config (Postgres over verified TLS, schema per plugin) |
 | `templates/<id>/` | Golden-path templates. **Merge a folder and it appears in the portal.** |
@@ -45,13 +50,18 @@ infrastructure and deployment come from `templates/_shared`:
   environment with one PR to the platform repo, at
   `https://<name>.<env>.<lab domain>`. Optional Postgres access (then
   `make database APP=services/<name>` in omarchy-k8s-ansible).
+- **scale-service**, **change-resources**, **add-database**, **request-help**
+  (type `operation`): Operate's request actions. The first three open a PR
+  that edits the service's platform values; request-help opens an issue.
 - **new-template**: scaffolds a new template folder here and opens a PR.
 
 ## How it is deployed
 
 Nothing lab-specific is in this repo. omarchy-k8s-ansible writes
 `app-config.lab.yaml` (base URL, GitHub integration, catalog locations,
-Kubernetes clusters, sign-in) and the secrets it references; omarchy-k8s-platform
+Kubernetes clusters, sign-in, Operate endpoints) and the secrets it references,
+including a token for a dedicated Argo CD account (read-only plus Deployment
+restart); omarchy-k8s-platform
 deploys the image to the hub cluster with the official Backstage Helm chart,
 its own CloudNativePG database, and an HTTPS route at `https://backstage.<lab domain>`.
 

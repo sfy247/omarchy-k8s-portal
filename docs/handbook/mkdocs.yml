@@ -10,6 +10,7 @@ nav:
       - Getting started: guides/getting-started.md
       - Create a service: guides/create-a-service.md
       - Deploy a service: guides/deploy-a-service.md
+      - Operate a service: guides/operate.md
       - Ship a change: guides/ship-a-change.md
       - Add a database: guides/add-a-database.md
       - Observe and troubleshoot: guides/observability.md

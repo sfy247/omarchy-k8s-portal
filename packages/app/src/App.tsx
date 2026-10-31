@@ -10,11 +10,13 @@ import techdocsPlugin from '@backstage/plugin-techdocs/alpha';
 import userSettingsPlugin from '@backstage/plugin-user-settings/alpha';
 import { navModule } from './modules/nav';
 import { landingModule } from './modules/landing';
+import { operateModule } from './modules/operate';
 import { signInModule } from './modules/signIn';
 
 // Exactly what the portal offers, listed explicitly (no auto-discovery):
 //   Create    scaffolder (/ redirects here)
 //   Discover  catalog, with Kubernetes, ownership and relation graphs
+//   Operate   deployments, health and logs of running applications; actions
 //   Learn     TechDocs: the platform handbook and every service's docs
 //   Search    one search over the catalog and all docs
 export default createApp({
@@ -30,6 +32,7 @@ export default createApp({
     signalsPlugin,
     navModule,
     landingModule,
+    operateModule,
     signInModule,
   ],
 });

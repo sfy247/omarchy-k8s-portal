@@ -1,0 +1,79 @@
+# Operate → Request action: Add a database. Changes the service's platform values
+# through a reviewed pull request; Argo CD applies it once merged.
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: add-database
+  title: Add a database
+  description: >-
+    Give a service access to the shared Postgres: network access and its connection Secret.
+  tags: [operate, kubernetes, approved]
+spec:
+  owner: group:default/platform-team
+  type: operation
+
+  parameters:
+    - title: Database
+      required: [service, environment]
+      properties:
+        service:
+          title: Service
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: service
+            defaultKind: Component
+            allowArbitraryValues: false
+        environment:
+          title: Environment
+          type: string
+          enum: [dev]
+          default: dev
+
+  steps:
+    - id: platform
+      name: Look up the platform repo
+      action: catalog:fetch
+      input:
+        entityRef: resource:default/platform-gitops-repo
+
+    # The service's folder in the platform repo: apps/<group>/<app label>
+    - id: service
+      name: Look up the service
+      action: catalog:fetch
+      input:
+        entityRef: ${{ parameters.service }}
+
+    - id: values
+      name: Update the platform values
+      action: platform:values:set
+      input:
+        url: https://github.com/${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}/${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}/blob/main/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values.yaml
+        targetPath: ./platform/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values.yaml
+        set:
+          database.enabled: true
+
+    - id: platform-pr
+      name: Open the pull request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
+        branchName: portal/database-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}-${{ context.task.id | truncate(8, true, '') }}
+        title: "Database access for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}"
+        description: |
+          Sets `database.enabled: true` in `values.yaml` (every environment).
+
+          After merging, a platform engineer creates the database and its Secret:
+          `make database APP=${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}` in omarchy-k8s-ansible.
+
+          Requested in the developer portal (Operate) for `${{ parameters.service }}`.
+        sourcePath: ./platform
+
+  output:
+    links:
+      - title: Pull request
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
+      - title: Back to Operate
+        url: /operate?app=${{ parameters.service | urlencode }}&env=${{ parameters.environment }}
