@@ -4,6 +4,7 @@ import catalogGraphPlugin from '@backstage/plugin-catalog-graph/alpha';
 import kubernetesPlugin from '@backstage/plugin-kubernetes/alpha';
 import orgPlugin from '@backstage/plugin-org/alpha';
 import scaffolderPlugin from '@backstage/plugin-scaffolder/alpha';
+import searchPlugin from '@backstage/plugin-search/alpha';
 import signalsPlugin from '@backstage/plugin-signals/alpha';
 import techdocsPlugin from '@backstage/plugin-techdocs/alpha';
 import userSettingsPlugin from '@backstage/plugin-user-settings/alpha';
@@ -11,9 +12,10 @@ import { navModule } from './modules/nav';
 import { landingModule } from './modules/landing';
 
 // Exactly what the portal offers, listed explicitly (no auto-discovery):
-//   Create       scaffolder (/ redirects here)
-//   My services  catalog, with Kubernetes, ownership and relation graphs
-//   Docs         TechDocs
+//   Create    scaffolder (/ redirects here)
+//   Discover  catalog, with Kubernetes, ownership and relation graphs
+//   Learn     TechDocs: the platform handbook and every service's docs
+//   Search    one search over the catalog and all docs
 export default createApp({
   features: [
     scaffolderPlugin,
@@ -22,6 +24,7 @@ export default createApp({
     kubernetesPlugin,
     orgPlugin,
     techdocsPlugin,
+    searchPlugin,
     userSettingsPlugin,
     signalsPlugin,
     navModule,

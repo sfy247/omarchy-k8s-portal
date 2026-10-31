@@ -7,21 +7,24 @@ import {
 import { NavContentBlueprint } from '@backstage/plugin-app-react';
 import { SidebarLogo } from './SidebarLogo';
 import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
-import AppsIcon from '@material-ui/icons/Apps';
-import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
+import ExploreIcon from '@material-ui/icons/Explore';
+import SchoolIcon from '@material-ui/icons/School';
+import SearchIcon from '@material-ui/icons/Search';
 import { UserSettingsSignInAvatar } from '@backstage/plugin-user-settings';
 
-// A short, task-focused sidebar: create something, find your services, read
-// docs. Other pages are disabled in app-config.yaml.
+// The developer experiences: Create, Discover, Learn (Operate comes next),
+// plus search across all of them
 export const SidebarContent = NavContentBlueprint.make({
   params: {
     component: () => (
       <Sidebar>
         <SidebarLogo />
         <SidebarDivider />
-        <SidebarItem icon={AddCircleOutlineIcon} to="/" text="Create" />
-        <SidebarItem icon={AppsIcon} to="/catalog" text="My services" />
-        <SidebarItem icon={LibraryBooksIcon} to="/docs" text="Docs" />
+        <SidebarItem icon={AddCircleOutlineIcon} to="/create" text="Create" />
+        <SidebarItem icon={ExploreIcon} to="/catalog" text="Discover" />
+        <SidebarItem icon={SchoolIcon} to="/docs" text="Learn" />
+        <SidebarDivider />
+        <SidebarItem icon={SearchIcon} to="/search" text="Search" />
         <SidebarSpace />
         <SidebarDivider />
         <SidebarItem

@@ -1,0 +1,28 @@
+# Platform handbook, rendered by TechDocs in the portal's Learn section.
+# The docs/ folder is also an Obsidian vault: edit in Obsidian, commit, and
+# the portal shows the change.
+site_name: Platform Handbook
+site_description: How to build, ship and run services on the lab platform
+docs_dir: docs
+nav:
+  - Home: index.md
+  - Developer guides:
+      - Getting started: guides/getting-started.md
+      - Create a service: guides/create-a-service.md
+      - Ship a change: guides/ship-a-change.md
+      - Add a database: guides/add-a-database.md
+      - Troubleshooting: guides/troubleshooting.md
+  - Platform internals:
+      - Ansible layout and best practices: 01 Ansible Layout and Best Practices.md
+      - Kubernetes setup and structure: 02 Kubernetes Setup and Structure.md
+      - Networking and the gateway: 03 Kubernetes Networking and Gateway.md
+      - GitOps and Argo CD: 04 GitOps and Argo CD.md
+      - DNS and TLS: 05 DNS and TLS.md
+      - Security model: 06 Security Model.md
+      - Operations runbook: 07 Operations Runbook.md
+      - Decisions and gotchas: 08 Decisions and Gotchas.md
+exclude_docs: |
+  _diagram-src/
+  .obsidian/
+plugins:
+  - techdocs-core

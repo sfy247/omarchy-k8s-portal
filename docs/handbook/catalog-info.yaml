@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: platform-handbook
+  title: Platform Handbook
+  description: Guides for developers and internals of the lab platform
+  annotations:
+    backstage.io/techdocs-ref: dir:.
+  tags: [docs, onboarding]
+spec:
+  type: documentation
+  lifecycle: production
+  owner: group:default/platform-team
+  system: developer-platform

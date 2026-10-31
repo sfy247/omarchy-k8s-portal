@@ -13,3 +13,5 @@ spec:
   type: service
   lifecycle: experimental
   owner: ${{ values.owner }}
+  # The platform group the service was created in (a System in Discover)
+  system: ${{ values.group }}

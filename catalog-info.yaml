@@ -13,6 +13,8 @@ spec:
   type: website
   lifecycle: production
   owner: group:default/platform-team
+  system: developer-platform
+  dependsOn: [resource:default/cluster-mgmt]
 ---
 # Where golden-path templates send deployment pull requests. Templates read
 # these annotations with catalog:fetch, so no template hard-codes the repo.
@@ -30,3 +32,13 @@ metadata:
 spec:
   type: git-repository
   owner: group:default/platform-team
+  system: developer-platform
+---
+# Other catalog files in this repo
+apiVersion: backstage.io/v1alpha1
+kind: Location
+metadata:
+  name: portal-repo-extras
+spec:
+  targets:
+    - ./docs/handbook/catalog-info.yaml
