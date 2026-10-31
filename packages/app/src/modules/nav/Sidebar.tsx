@@ -1,60 +1,35 @@
 import {
   Sidebar,
   SidebarDivider,
-  SidebarGroup,
   SidebarItem,
-  SidebarScrollWrapper,
   SidebarSpace,
 } from '@backstage/core-components';
 import { NavContentBlueprint } from '@backstage/plugin-app-react';
 import { SidebarLogo } from './SidebarLogo';
-import MenuIcon from '@material-ui/icons/Menu';
-import SearchIcon from '@material-ui/icons/Search';
-import { SidebarSearchModal } from '@backstage/plugin-search';
+import AddCircleOutlineIcon from '@material-ui/icons/AddCircleOutline';
+import AppsIcon from '@material-ui/icons/Apps';
+import LibraryBooksIcon from '@material-ui/icons/LibraryBooks';
 import { UserSettingsSignInAvatar } from '@backstage/plugin-user-settings';
-import { NotificationsSidebarItem } from '@backstage/plugin-notifications';
 
+// A short, task-focused sidebar: create something, find your services, read
+// docs. Other pages are disabled in app-config.yaml.
 export const SidebarContent = NavContentBlueprint.make({
   params: {
-    component: ({ navItems }) => {
-      const nav = navItems.withComponent(item => (
-        <SidebarItem icon={() => item.icon} to={item.href} text={item.title} />
-      ));
-
-      // Skipped items
-      nav.take('page:search'); // Using search modal instead
-      nav.take('page:notifications'); // Using NotificationsSidebarItem manually instead
-
-      return (
-        <Sidebar>
-          <SidebarLogo />
-          <SidebarGroup label="Search" icon={<SearchIcon />} to="/search">
-            <SidebarSearchModal />
-          </SidebarGroup>
-          <SidebarDivider />
-          <SidebarGroup label="Menu" icon={<MenuIcon />}>
-            {nav.take('page:home')}
-            {nav.take('page:catalog')}
-            {nav.take('page:scaffolder')}
-            <SidebarDivider />
-            <SidebarScrollWrapper>
-              {nav.rest({ sortBy: 'title' })}
-            </SidebarScrollWrapper>
-          </SidebarGroup>
-          <SidebarSpace />
-          <SidebarDivider />
-          <NotificationsSidebarItem />
-          <SidebarDivider />
-          <SidebarGroup
-            label="Settings"
-            icon={<UserSettingsSignInAvatar />}
-            to="/settings"
-          >
-            {nav.take('page:app-visualizer')}
-            {nav.take('page:user-settings')}
-          </SidebarGroup>
-        </Sidebar>
-      );
-    },
+    component: () => (
+      <Sidebar>
+        <SidebarLogo />
+        <SidebarDivider />
+        <SidebarItem icon={AddCircleOutlineIcon} to="/" text="Create" />
+        <SidebarItem icon={AppsIcon} to="/catalog" text="My services" />
+        <SidebarItem icon={LibraryBooksIcon} to="/docs" text="Docs" />
+        <SidebarSpace />
+        <SidebarDivider />
+        <SidebarItem
+          icon={() => <UserSettingsSignInAvatar />}
+          to="/settings"
+          text="Settings"
+        />
+      </Sidebar>
+    ),
   },
 });
