@@ -9,7 +9,9 @@ app:
   title: Developer Portal
 
 backend:
-  listen: ':7007'
+  # Object form, matching app-config.yaml (config merging rejects mixed types)
+  listen:
+    port: 7007
   database:
     client: pg
     # One database owned by Backstage, one schema per plugin, so Backstage
