@@ -21,6 +21,9 @@ spec:
           imageName: ${{ values.image }}
           commonUpdateSettings:
             updateStrategy: newest-build
+            # Update even before the app reports the image as running (first
+            # rollout, or while a broken version is crash-looping)
+            forceUpdate: true
             allowTags: regexp:^sha-[0-9a-f]{40}$
           manifestTargets:
             helm:
