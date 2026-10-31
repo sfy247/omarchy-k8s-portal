@@ -1,0 +1,29 @@
+# Teams and people. OwnerPicker in templates lists these groups; GitHub sign-in
+# maps a GitHub username to the User with the same name.
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-team
+  description: Owns the developer portal, golden paths and the cluster platform
+spec:
+  type: team
+  children: []
+  members: [sfy247]
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: app-team
+  description: Builds product services
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: User
+metadata:
+  name: sfy247
+spec:
+  profile:
+    displayName: sfy247
+  memberOf: [platform-team]

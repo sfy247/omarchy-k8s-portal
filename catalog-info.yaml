@@ -1,0 +1,32 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: developer-portal
+  description: Backstage developer portal with golden-path templates
+  annotations:
+    github.com/project-slug: sfy247/omarchy-k8s-portal
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/component=backstage
+    # Read by the new-template template to open pull requests here
+    platform.lab/repo-owner: sfy247
+    platform.lab/repo-name: omarchy-k8s-portal
+spec:
+  type: website
+  lifecycle: production
+  owner: group:default/platform-team
+---
+# Where golden-path templates send deployment pull requests. Templates read
+# these annotations with catalog:fetch, so no template hard-codes the repo.
+apiVersion: backstage.io/v1alpha1
+kind: Resource
+metadata:
+  name: platform-gitops-repo
+  description: GitOps repo Argo CD deploys from (omarchy-k8s-platform)
+  annotations:
+    github.com/project-slug: sfy247/omarchy-k8s-platform
+    platform.lab/repo-owner: sfy247
+    platform.lab/repo-name: omarchy-k8s-platform
+    platform.lab/portal-workflows: sfy247/omarchy-k8s-portal
+    platform.lab/environments: dev
+spec:
+  type: git-repository
+  owner: group:default/platform-team

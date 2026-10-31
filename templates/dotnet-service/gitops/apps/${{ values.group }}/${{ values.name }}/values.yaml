@@ -1,0 +1,19 @@
+# ${{ values.name }}: values for the platform's web-service chart (all environments).
+# Created by the developer portal.
+nameOverride: ${{ values.name }}
+
+image:
+  repository: ${{ values.image }}
+  tag: bootstrap   # each environment pins its tag in values-<env>.yaml
+
+containerPort: 8080
+
+resources:
+  requests: { cpu: 50m, memory: 96Mi }
+  limits: { memory: 256Mi }
+{%- if values.database %}
+
+# Reach the shared Postgres and load the ${{ values.name }}-db Secret
+database:
+  enabled: true
+{%- endif %}

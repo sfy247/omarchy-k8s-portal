@@ -1,0 +1,24 @@
+# Thin caller: build, test, scan and publish live in the platform's reusable
+# workflow, so every service gets fixes in one place. No secrets needed: the
+# image goes to GHCR with the built-in token, and Argo CD Image Updater rolls
+# new images out to dev.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: {% raw %}${{ github.workflow }}-${{ github.ref }}{% endraw %}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    uses: ${{ values.workflowsRepo }}/.github/workflows/dotnet-service.yaml@main
+    with:
+      project-path: src/${{ values.name }}
