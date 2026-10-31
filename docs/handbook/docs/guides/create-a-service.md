@@ -47,4 +47,6 @@ service shows as not ready; that is expected.
 - A container that runs as non-root with a read-only filesystem
 - A network policy: only HTTP in; out only DNS (and Postgres if enabled)
 - Image vulnerability scanning on every build
+- Request metrics, JSON logs, a Grafana dashboard and alerts from the first
+  deploy (see [Observe and troubleshoot](observability.md))
 - A page in Discover, and its `docs/` folder in Learn

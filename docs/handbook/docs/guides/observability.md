@@ -8,7 +8,7 @@ your service is picked up automatically.
 
 | Signal | Where it comes from | Where to look |
 |---|---|---|
-| Request rate, errors, latency | Your app's `/metrics` (services from the templates and hello-world apps expose them) | **Applications → Service Health** |
+| Request rate, errors, latency | Your app's `/metrics`: every service created from a template exposes it | **Applications → Service Health** |
 | Logs | Everything your container writes to stdout/stderr | **Logs → Logs Explorer**, or Grafana's *Drilldown → Logs* |
 | Kubernetes events | Restarts, OOM kills, failed probes, image pulls, scheduling | Service Health and Pod Troubleshooting |
 | Pod resources | CPU, memory, throttling vs requests and limits | **Troubleshooting → Pod Troubleshooting** |

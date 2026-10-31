@@ -4,10 +4,11 @@ metadata:
   name: dotnet-service
   title: .NET web service
   description: >-
-    C# minimal API with health checks, JSON logs, a hardened container image
-    and CI, deployed by GitOps: one form creates the service repo and opens one
-    pull request in the platform repo that deploys it to dev over HTTPS.
-  tags: [dotnet, csharp, kubernetes, argocd, recommended]
+    C# minimal API with health checks, metrics and JSON logs, a hardened
+    container image and CI, deployed by GitOps: one form creates the service
+    repo and opens one pull request in the platform repo that deploys it to dev
+    over HTTPS, with dashboards and alerts from day one.
+  tags: [dotnet, csharp, kubernetes, argocd, observability, recommended]
 spec:
   owner: group:default/platform-team
   type: service

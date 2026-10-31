@@ -8,6 +8,11 @@ image:
 
 containerPort: 8080
 
+# Request metrics at /metrics (Observability.cs), scraped via a PodMonitor:
+# Grafana's Service Health dashboard and the app alerts pick it up
+metrics:
+  enabled: true
+
 resources:
   requests: { cpu: 50m, memory: 96Mi }
   limits: { memory: 256Mi }

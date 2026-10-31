@@ -1,14 +1,18 @@
-using System.Text.Json;
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Structured JSON logs to stdout, so the cluster's log tooling can parse them
+// Framework logs as JSON on stdout (warnings and above); request logs come
+// from Observability.cs, so every line from this container is parseable
 builder.Logging.ClearProviders();
 builder.Logging.AddJsonConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
 
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+// Platform observability: request metrics at /metrics + JSON request logs
+app.UseRequestTelemetry();
+app.MapMetrics();
 
 app.MapGet("/", () => Results.Json(new
 {
@@ -31,4 +35,5 @@ app.MapGet("/db", () => Results.Json(new
 }));
 {%- endif %}
 
+Observability.Log("info", "starting");
 app.Run();
