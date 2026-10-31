@@ -1,0 +1,24 @@
+# ${{ values.name }}: values for the platform's web-service chart (all environments).
+# Created by the developer portal (templates/_shared/deploy).
+nameOverride: ${{ values.name }}
+
+image:
+  repository: ${{ values.image }}
+  tag: bootstrap   # each environment pins its tag in values-<env>.yaml
+
+containerPort: 8080
+
+# Request metrics at /metrics (Observability.cs), scraped via a PodMonitor:
+# Grafana's Service Health dashboard and the app alerts pick it up
+metrics:
+  enabled: true
+
+resources:
+  requests: { cpu: 50m, memory: 96Mi }
+  limits: { memory: 256Mi }
+{%- if values.database %}
+
+# Reach the shared Postgres and load the ${{ values.name }}-db Secret
+database:
+  enabled: true
+{%- endif %}

@@ -1,0 +1,4 @@
+# ${{ values.environment }} overrides. image.tag is maintained by Argo CD Image Updater
+# (environments/${{ values.environment }}/${{ values.group }}/image-updates/${{ values.name }}.yaml).
+image:
+  tag: bootstrap
