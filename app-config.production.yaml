@@ -37,8 +37,10 @@ backend:
 catalog:
   # Locations come from app-config.lab.yaml; no demo data in production
   locations: []
+  # Approved templates only: no Template here, so templates are accepted solely
+  # from the portal repo's templates/ location (merged through review)
   rules:
-    - allow: [Component, System, API, Resource, Location, Template, Group, User, Domain]
+    - allow: [Component, System, API, Resource, Location, Group, User, Domain]
 
 scaffolder:
   defaultAuthor:

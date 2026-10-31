@@ -1,5 +1,5 @@
 # ${{ values.name }}: values for the platform's web-service chart (all environments).
-# Created by the developer portal (templates/_shared/deploy).
+# Created by the developer portal (templates/_shared/infra).
 nameOverride: ${{ values.name }}
 
 image:

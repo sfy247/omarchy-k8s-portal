@@ -7,7 +7,7 @@ metadata:
     Deploy a service that's already in the catalog to an environment: opens a
     pull request in the platform repo that Argo CD applies once merged. Works
     for any service, whatever language or template it came from.
-  tags: [kubernetes, argocd, deploy, recommended]
+  tags: [kubernetes, argocd, deploy, approved]
 spec:
   owner: group:default/platform-team
   type: deployment
@@ -33,11 +33,11 @@ spec:
           enum: [dev]
           default: dev
         firstDeploy:
-          title: First deployment of this service
+          title: Provision infrastructure (first deployment)
           description: >-
-            Also creates the settings every environment shares (image, port,
-            resources, metrics). Untick when adding another environment, so
-            they aren't overwritten.
+            Also creates what the service runs with in every environment
+            (port, resources, HTTPS route, metrics, database access). Untick
+            when adding another environment, so it isn't overwritten.
           type: boolean
           default: true
         database:
@@ -63,34 +63,43 @@ spec:
       input:
         entityRef: ${{ parameters.service }}
 
-    - id: fetch-base
-      name: Generate deployment
+    - id: infra
+      name: Provision infrastructure
       if: ${{ parameters.firstDeploy }}
       action: fetch:template
       input:
-        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/base
-        targetPath: ./gitops
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/infra
+        targetPath: ./platform
         values:
           name: ${{ steps['service'].output.entity.metadata.name }}
           group: ${{ steps['service'].output.entity.spec.system }}
-          environment: ${{ parameters.environment }}
           database: ${{ parameters.database }}
           image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
 
-    - id: fetch-environment
-      name: Generate environment settings
+    - id: cd
+      name: Generate CI/CD (image roll-out)
       action: fetch:template
       input:
-        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/environment
-        targetPath: ./gitops
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/platform
+        targetPath: ./platform
         values:
           name: ${{ steps['service'].output.entity.metadata.name }}
           group: ${{ steps['service'].output.entity.spec.system }}
           environment: ${{ parameters.environment }}
-          database: ${{ parameters.database }}
           image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
 
-    - id: gitops-pr
+    - id: deploy
+      name: Deploy application
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/deploy
+        targetPath: ./platform
+        values:
+          name: ${{ steps['service'].output.entity.metadata.name }}
+          group: ${{ steps['service'].output.entity.spec.system }}
+          environment: ${{ parameters.environment }}
+
+    - id: platform-pr
       name: Open the deployment pull request
       action: publish:github:pull-request
       input:
@@ -106,12 +115,12 @@ spec:
           After merging, Argo CD deploys it to
           `https://${{ steps['service'].output.entity.metadata.name }}.${{ parameters.environment }}.<lab domain>`.
           Database requested: ${{ parameters.database }}.
-        sourcePath: ./gitops
+        sourcePath: ./platform
 
   output:
     links:
       - title: Deployment pull request
-        url: ${{ steps['gitops-pr'].output.remoteUrl }}
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
       - title: Service in the catalog
         icon: catalog
         entityRef: ${{ parameters.service }}

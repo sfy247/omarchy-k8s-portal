@@ -28,9 +28,9 @@ metadata:
     platform.lab/repo-owner: sfy247
     platform.lab/repo-name: omarchy-k8s-platform
     platform.lab/portal-workflows: sfy247/omarchy-k8s-portal
-    # How services are deployed (templates/_shared/deploy): every template
+    # Create-flow building blocks (templates/_shared): every template
     # renders this one copy, wherever the template itself was loaded from
-    platform.lab/deploy-template: https://github.com/sfy247/omarchy-k8s-portal/tree/main/templates/_shared/deploy
+    platform.lab/building-blocks: https://github.com/sfy247/omarchy-k8s-portal/tree/main/templates/_shared
     platform.lab/environments: dev
 spec:
   type: git-repository

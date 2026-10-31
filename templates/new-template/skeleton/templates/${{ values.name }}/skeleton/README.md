@@ -15,11 +15,18 @@ Every service template must produce a service that:
 
 Then dashboards, logs and alerts work without any extra setup.
 
-## Keep deployment out of the template
+## Follow the Create flow
 
-A language template creates the application only. To offer "deploy now", add
-the optional steps from `dotnet-service/template.yaml` (`fetch-base`,
-`fetch-environment`, `gitops-pr`): they render the shared
-`templates/_shared/deploy` block, the same one the **Deploy a service** action
-uses. Never copy deployment files into a template. See the
-`dotnet-service` template's `Observability.cs` for a reference implementation.
+A service template only owns its application code (`skeleton/`). Every other
+stage reuses the shared blocks in `templates/_shared` (see its README), in this
+order, exactly as `dotnet-service/template.yaml` does:
+
+1. Create GitHub repo (`github:repo:create`)
+2. Generate CI/CD: `_shared/cicd/repo` (pipeline, with your `language`) and
+   `_shared/cicd/platform` (image roll-out)
+3. Push the code (`github:repo:push`)
+4. Provision infrastructure: `_shared/infra`
+5. Deploy application: `_shared/deploy`, then one platform pull request
+
+Never copy CI or deployment files into a template. A new language also needs a
+reusable `.github/workflows/<language>-service.yaml` in this repo.

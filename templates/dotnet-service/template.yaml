@@ -1,20 +1,23 @@
+# The Create flow, one stage per step (the shared blocks live in templates/_shared):
+#   1 Create application   2 Select approved template (this one)
+#   3 Configure application (the form)   4 Create GitHub repo
+#   5 Generate CI/CD   6 Provision infrastructure   7 Deploy application
 apiVersion: scaffolder.backstage.io/v1beta3
 kind: Template
 metadata:
   name: dotnet-service
   title: .NET web service
   description: >-
-    C# minimal API with health checks, metrics and JSON logs, a hardened
-    container image and CI. Creates the service repo and registers it in the
-    catalog; optionally deploys it to dev in the same run (the same step as
-    the "Deploy a service" action).
-  tags: [dotnet, csharp, kubernetes, argocd, observability, recommended]
+    C# minimal API with health checks, metrics and JSON logs. Creates the
+    GitHub repo, generates CI/CD, provisions its infrastructure and deploys it
+    to dev over HTTPS, all reviewed through one platform pull request.
+  tags: [dotnet, csharp, kubernetes, argocd, observability, approved]
 spec:
   owner: group:default/platform-team
   type: service
 
   parameters:
-    - title: Service
+    - title: Configure application
       required: [name, description, owner, group]
       properties:
         name:
@@ -40,7 +43,7 @@ spec:
           enum: [services]
           default: services
 
-    - title: Repository
+    - title: GitHub repository
       required: [repoUrl]
       properties:
         repoUrl:
@@ -50,17 +53,8 @@ spec:
           ui:options:
             allowedHosts: [github.com]
 
-    # Deployment is a separate concern (templates/_shared/deploy, also the
-    # standalone "Deploy a service" action); offered here for one-click start
-    - title: Deploy
+    - title: Infrastructure and deployment
       properties:
-        deploy:
-          title: Deploy to dev now
-          description: >-
-            Opens a pull request in the platform repo that deploys the service
-            to dev over HTTPS. You can also do this later with "Deploy a service".
-          type: boolean
-          default: true
         database:
           title: PostgreSQL database
           description: >-
@@ -68,17 +62,34 @@ spec:
             details. A platform engineer then runs `make database APP=<group>/<name>`.
           type: boolean
           default: false
+        deploy:
+          title: Provision and deploy to dev now
+          description: >-
+            Untick to create only the repo and CI; provision and deploy later
+            with "Deploy a service".
+          type: boolean
+          default: true
 
   steps:
-    # Platform repo coordinates come from the catalog, not this file
     - id: platform
-      name: Look up the platform repo
+      name: Look up platform settings
       action: catalog:fetch
       input:
         entityRef: resource:default/platform-gitops-repo
 
-    - id: fetch-service
-      name: Generate service code
+    # ---- Create GitHub repo ----
+    - id: repo
+      name: Create GitHub repo
+      action: github:repo:create
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        # Public: free Actions minutes and the cluster pulls images without credentials
+        repoVisibility: public
+        deleteBranchOnMerge: true
+
+    - id: code
+      name: Generate application code
       action: fetch:template
       input:
         url: ./skeleton
@@ -91,69 +102,91 @@ spec:
           database: ${{ parameters.database }}
           repoOwner: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
           repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
-          workflowsRepo: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/portal-workflows'] }}
           namespace: ${{ parameters.name | replace('-', ' ') | title | replace(' ', '') }}
 
-    - id: publish
-      name: Create the service repo
-      action: publish:github
+    # ---- Generate CI/CD ----
+    - id: ci
+      name: Generate CI/CD (pipeline)
+      action: fetch:template
       input:
-        sourcePath: ./service
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/repo
+        targetPath: ./service
+        values:
+          language: dotnet
+          projectPath: src/${{ parameters.name }}
+          workflowsRepo: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/portal-workflows'] }}
+
+    - id: cd
+      name: Generate CI/CD (image roll-out to dev)
+      if: ${{ parameters.deploy }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/platform
+        targetPath: ./platform
+        values:
+          name: ${{ parameters.name }}
+          group: ${{ parameters.group }}
+          environment: dev
+          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
+
+    # Pushing starts the first CI run, which publishes the first image
+    - id: publish
+      name: Push code and pipeline to the repo
+      action: github:repo:push
+      input:
         repoUrl: ${{ parameters.repoUrl }}
-        description: ${{ parameters.description }}
+        sourcePath: ./service
         defaultBranch: main
-        # Public: free Actions minutes and the cluster pulls images without credentials
-        repoVisibility: public
-        deleteBranchOnMerge: true
         protectDefaultBranch: false
 
-    # ---- Optional: deploy to dev (shared building block) ----
-    - id: fetch-base
-      name: Generate deployment
+    # ---- Provision infrastructure ----
+    - id: infra
+      name: Provision infrastructure
       if: ${{ parameters.deploy }}
       action: fetch:template
       input:
-        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/base
-        targetPath: ./gitops
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/infra
+        targetPath: ./platform
+        values:
+          name: ${{ parameters.name }}
+          group: ${{ parameters.group }}
+          database: ${{ parameters.database }}
+          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
+
+    # ---- Deploy application ----
+    - id: deploy
+      name: Deploy application to dev
+      if: ${{ parameters.deploy }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/deploy
+        targetPath: ./platform
         values:
           name: ${{ parameters.name }}
           group: ${{ parameters.group }}
           environment: dev
-          database: ${{ parameters.database }}
-          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
 
-    - id: fetch-environment
-      name: Generate dev settings
-      if: ${{ parameters.deploy }}
-      action: fetch:template
-      input:
-        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/environment
-        targetPath: ./gitops
-        values:
-          name: ${{ parameters.name }}
-          group: ${{ parameters.group }}
-          environment: dev
-          database: ${{ parameters.database }}
-          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
-
-    - id: gitops-pr
-      name: Open the deployment pull request
+    - id: platform-pr
+      name: Open the platform pull request (infrastructure + deployment)
       if: ${{ parameters.deploy }}
       action: publish:github:pull-request
       input:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
-        branchName: portal/deploy-${{ parameters.name }}-dev
-        title: "Deploy ${{ parameters.name }} to dev"
+        branchName: portal/create-${{ parameters.name }}
+        title: "Provision and deploy ${{ parameters.name }} to dev"
         description: |
           Created by the developer portal for ${{ parameters.owner }}.
 
-          - `apps/${{ parameters.group }}/${{ parameters.name }}/`: values for the web-service chart
-          - `environments/dev/${{ parameters.group }}/image-updates/${{ parameters.name }}.yaml`: keeps dev on the newest image
+          | Stage | File |
+          |---|---|
+          | Provision infrastructure | `apps/${{ parameters.group }}/${{ parameters.name }}/values.yaml` |
+          | Deploy application | `apps/${{ parameters.group }}/${{ parameters.name }}/values-dev.yaml` |
+          | CI/CD (roll-out) | `environments/dev/${{ parameters.group }}/image-updates/${{ parameters.name }}.yaml` |
 
           After merging, Argo CD deploys it to `https://${{ parameters.name }}.dev.<lab domain>`.
           Database requested: ${{ parameters.database }}. If true, run
           `make database APP=${{ parameters.group }}/${{ parameters.name }}` in omarchy-k8s-ansible.
-        sourcePath: ./gitops
+        sourcePath: ./platform
 
     - id: register
       name: Register in the catalog
@@ -166,15 +199,16 @@ spec:
     text:
       - title: Next steps
         content: |
-          CI builds and publishes the image on every push to `main`.
-          {%- if parameters.deploy %} Merge the deployment pull request to run it in dev.{% else %}
-          When you're ready, deploy it with **Create → Deploy a service**.{% endif %}
+          The first CI run is building and publishing the image now.
+          {%- if parameters.deploy %} Merge the platform pull request: Argo CD then
+          provisions and deploys the service to dev.{% else %}
+          When you're ready, provision and deploy it with **Create → Deploy a service**.{% endif %}
     links:
-      - title: Service repository
-        url: ${{ steps['publish'].output.remoteUrl }}
-      - title: Deployment pull request
+      - title: GitHub repository
+        url: ${{ steps['repo'].output.remoteUrl }}
+      - title: Platform pull request
         if: ${{ parameters.deploy }}
-        url: ${{ steps['gitops-pr'].output.remoteUrl }}
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
       - title: Open in catalog
         icon: catalog
         entityRef: ${{ steps['register'].output.entityRef }}

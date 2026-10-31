@@ -104,7 +104,8 @@ scaffolder:
 
 catalog:
   rules:
-    - allow: [Component, System, API, Resource, Location, Template, Group, User, Domain]
+    # Templates only from templates/ (approved through review), see below
+    - allow: [Component, System, API, Resource, Location, Group, User, Domain]
   locations:
     # Local development reads the catalog straight from this checkout
     - type: file

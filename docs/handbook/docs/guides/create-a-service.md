@@ -1,8 +1,19 @@
 # Create a service
 
-## 1. Fill in the form
+**Create** takes you from an idea to a running service in seven stages. You do
+the first three; the portal does the rest.
 
-Open **Create** and choose a template, for example **.NET web service**.
+| # | Stage | Who | What happens |
+|---|---|---|---|
+| 1 | Create application | You | Open **Create** in the portal |
+| 2 | Select approved template | You | Pick a template, e.g. **.NET web service**. Only templates reviewed by the platform team are listed. |
+| 3 | Configure application | You | Fill in the form (below) |
+| 4 | Create GitHub repo | Portal | An empty repo under the owner you chose, with your application code |
+| 5 | Generate CI/CD | Portal | A pipeline (build, test, scan, publish the image) and a rule that rolls each new image out |
+| 6 | Provision infrastructure | Portal | Namespace, HTTPS route, network policy, resources, metrics and database access |
+| 7 | Deploy application | Portal + Argo CD | Deployment to dev, applied when the platform pull request is merged |
+
+## Configure application: the form
 
 | Field | What to enter |
 |---|---|
@@ -11,39 +22,35 @@ Open **Create** and choose a template, for example **.NET web service**.
 | Owning team | Your team. It owns the service in the catalog. |
 | App group | Where it runs; `services` for new services. |
 | Repository location | Owner and repo name on GitHub, usually the same as the service name. |
-| Deploy to dev now | Leave ticked to deploy in the same run. Untick to create only the code; deploy later with [Deploy a service](deploy-a-service.md). |
 | PostgreSQL database | Tick if the service needs one (see [Add a database](add-a-database.md)). |
+| Provision and deploy to dev now | Leave ticked. Untick to create only the repo and CI, and run stages 6 and 7 later with [Deploy a service](deploy-a-service.md). |
 
-Creating the application and deploying it are separate building blocks: the
-"Deploy to dev now" step is exactly the [Deploy a service](deploy-a-service.md)
-action, run for you.
+## Watch the stages run
 
-## 2. What the portal creates
+After **Create**, the portal shows each stage as it runs, then links to the
+GitHub repo, the platform pull request and the service's catalog page.
 
-When you click **Create**, the portal:
+Stages 5 to 7 change the platform repo, so they arrive as **one pull request**:
 
-1. **Creates your repo** with working code, a hardened Dockerfile, CI, docs and
-   a `catalog-info.yaml`.
-2. **Opens one pull request** in the platform repo that deploys the service to
-   dev (if *Deploy to dev now* was ticked): its settings in
-   `apps/<group>/<name>/` and a rule that rolls out new images automatically.
-3. **Registers it in Discover**, so others can find it.
+| Stage | File in `omarchy-k8s-platform` |
+|---|---|
+| Provision infrastructure | `apps/<group>/<name>/values.yaml` |
+| Deploy application | `apps/<group>/<name>/values-dev.yaml` |
+| CI/CD (roll-out) | `environments/dev/<group>/image-updates/<name>.yaml` |
 
-The last screen links to each of them.
+## Merge the pull request
 
-## 3. Merge the pull request
+Nothing runs in the cluster until someone merges it. That review is where the
+platform team sees what's being added.
 
-The service is not deployed until someone merges the platform pull request.
-That review is the point where the platform team sees what is being added.
+## Wait for the first rollout
 
-## 4. Wait for the first rollout
-
-- Creating the repo triggers its first CI run (about 3 minutes).
+- Pushing the code starts the first CI run (about 3 minutes).
 - When the image is published, the platform picks it up within about two
   minutes and Argo CD deploys it.
 
 Then open `https://<name>.dev.kindell247`. Until the first image exists, the
-service shows as not ready; that is expected.
+service shows as not ready; that's expected.
 
 ## What your service gets for free
 

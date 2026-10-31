@@ -1,8 +1,9 @@
 # Deploy a service
 
-Deploying is its own action, separate from creating the code. Use it for a
-service you created without *Deploy to dev now*, or for any service in the
-catalog, whatever language or template it came from.
+Stages 6 and 7 of [Create](create-a-service.md) (provision infrastructure,
+deploy application) as an action of their own. Use it for a service created
+without *Provision and deploy to dev now*, or for any service in the catalog,
+whatever language or template it came from.
 
 ## 1. Fill in the form
 
@@ -12,7 +13,7 @@ Open **Create** and choose **Deploy a service**.
 |---|---|
 | Service | Pick it from the catalog. Its name, group and image come from its catalog entry. |
 | Environment | `dev` (the only environment enabled today). |
-| First deployment of this service | Leave ticked the first time. Untick when adding another environment, so the shared settings aren't overwritten. |
+| Provision infrastructure (first deployment) | Leave ticked the first time. Untick when adding another environment, so the shared settings aren't overwritten. |
 | PostgreSQL database | Tick if the service needs one (see [Add a database](add-a-database.md)). |
 
 ## 2. Merge the pull request
