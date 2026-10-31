@@ -19,6 +19,20 @@ export default createBackendPlugin({
         catalog: catalogServiceRef,
       },
       async init({ config, logger, httpAuth, auth, httpRouter, catalog }) {
+        // Without operate.* config (e.g. plain local development) the page
+        // explains what's missing instead of the backend failing to start
+        if (!config.has('operate.argocd.url')) {
+          logger.warn('operate.* is not configured; Operate is disabled');
+          httpRouter.use((_req, res) => {
+            res.status(503).json({
+              error: {
+                message:
+                  'Operate is not configured on this portal (operate.* in app-config)',
+              },
+            });
+          });
+          return;
+        }
         httpRouter.use(
           await createRouter({ config, logger, httpAuth, auth, catalog }),
         );
