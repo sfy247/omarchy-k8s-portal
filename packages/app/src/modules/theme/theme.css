@@ -1,0 +1,22 @@
+/* Backstage UI (BUI) tokens for the same dark + gold theme as theme.ts */
+[data-theme-mode='dark'] {
+  --bui-bg-app: #0b0b0c;
+  --bui-bg-neutral-1: #141416;
+  --bui-bg-neutral-1-hover: #1d1d20;
+  --bui-bg-neutral-1-pressed: #232327;
+  --bui-bg-neutral-2: #1b1b1e;
+  --bui-bg-neutral-2-hover: #242428;
+  --bui-bg-neutral-2-pressed: #2b2b30;
+  --bui-bg-neutral-3: #232327;
+  --bui-bg-neutral-3-hover: #2c2c31;
+  --bui-bg-neutral-3-pressed: #333339;
+  --bui-bg-solid: #d4943a;
+  --bui-bg-solid-hover: #e8b45f;
+  --bui-bg-solid-pressed: #9c6a24;
+  --bui-fg-solid: #141006;
+  --bui-fg-primary: #f2f2f3;
+  --bui-fg-secondary: #a8a8ad;
+  --bui-border-1: #2a2a2e;
+  --bui-border-2: #3a3a40;
+  --bui-ring: #d4943a;
+}

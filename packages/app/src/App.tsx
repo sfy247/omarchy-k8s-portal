@@ -11,6 +11,7 @@ import userSettingsPlugin from '@backstage/plugin-user-settings/alpha';
 import { navModule } from './modules/nav';
 import { landingModule } from './modules/landing';
 import { operateModule } from './modules/operate';
+import { themeModule } from './modules/theme';
 import { signInModule } from './modules/signIn';
 
 // Exactly what the portal offers, listed explicitly (no auto-discovery):
@@ -33,6 +34,7 @@ export default createApp({
     navModule,
     landingModule,
     operateModule,
+    themeModule,
     signInModule,
   ],
 });
