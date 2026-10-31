@@ -68,3 +68,17 @@ kubernetes:
 
 permission:
   enabled: true
+
+search:
+  # Index after the catalog has had time to load at startup, then keep fresh
+  collators:
+    catalog:
+      schedule:
+        initialDelay: { seconds: 90 }
+        frequency: { minutes: 5 }
+        timeout: { minutes: 15 }
+    techdocs:
+      schedule:
+        initialDelay: { seconds: 120 }
+        frequency: { minutes: 5 }
+        timeout: { minutes: 15 }
