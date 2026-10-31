@@ -1,0 +1,117 @@
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: deploy-service
+  title: Deploy a service
+  description: >-
+    Deploy a service that's already in the catalog to an environment: opens a
+    pull request in the platform repo that Argo CD applies once merged. Works
+    for any service, whatever language or template it came from.
+  tags: [kubernetes, argocd, deploy, recommended]
+spec:
+  owner: group:default/platform-team
+  type: deployment
+
+  parameters:
+    - title: Service
+      required: [service, environment]
+      properties:
+        service:
+          title: Service
+          description: The catalog service to deploy (its repo must publish an image to GHCR).
+          type: string
+          ui:field: EntityPicker
+          ui:options:
+            catalogFilter:
+              kind: Component
+              spec.type: service
+            defaultKind: Component
+            allowArbitraryValues: false
+        environment:
+          title: Environment
+          type: string
+          enum: [dev]
+          default: dev
+        firstDeploy:
+          title: First deployment of this service
+          description: >-
+            Also creates the settings every environment shares (image, port,
+            resources, metrics). Untick when adding another environment, so
+            they aren't overwritten.
+          type: boolean
+          default: true
+        database:
+          title: PostgreSQL database
+          description: >-
+            Lets the service reach the shared Postgres and load its connection
+            details. A platform engineer then runs `make database APP=<group>/<name>`.
+          type: boolean
+          default: false
+
+  steps:
+    - id: platform
+      name: Look up the platform repo
+      action: catalog:fetch
+      input:
+        entityRef: resource:default/platform-gitops-repo
+
+    # Name, group (the service's System) and image (from its GitHub repo)
+    # all come from the catalog, so the form only asks what's new
+    - id: service
+      name: Look up the service
+      action: catalog:fetch
+      input:
+        entityRef: ${{ parameters.service }}
+
+    - id: fetch-base
+      name: Generate deployment
+      if: ${{ parameters.firstDeploy }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/base
+        targetPath: ./gitops
+        values:
+          name: ${{ steps['service'].output.entity.metadata.name }}
+          group: ${{ steps['service'].output.entity.spec.system }}
+          environment: ${{ parameters.environment }}
+          database: ${{ parameters.database }}
+          image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
+
+    - id: fetch-environment
+      name: Generate environment settings
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/environment
+        targetPath: ./gitops
+        values:
+          name: ${{ steps['service'].output.entity.metadata.name }}
+          group: ${{ steps['service'].output.entity.spec.system }}
+          environment: ${{ parameters.environment }}
+          database: ${{ parameters.database }}
+          image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
+
+    - id: gitops-pr
+      name: Open the deployment pull request
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
+        branchName: portal/deploy-${{ steps['service'].output.entity.metadata.name }}-${{ parameters.environment }}
+        title: "Deploy ${{ steps['service'].output.entity.metadata.name }} to ${{ parameters.environment }}"
+        description: |
+          Requested in the developer portal for `${{ parameters.service }}`.
+
+          - `apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.name }}/`: values for the web-service chart
+          - `environments/${{ parameters.environment }}/${{ steps['service'].output.entity.spec.system }}/image-updates/`: keeps ${{ parameters.environment }} on the newest image
+
+          After merging, Argo CD deploys it to
+          `https://${{ steps['service'].output.entity.metadata.name }}.${{ parameters.environment }}.<lab domain>`.
+          Database requested: ${{ parameters.database }}.
+        sourcePath: ./gitops
+
+  output:
+    links:
+      - title: Deployment pull request
+        url: ${{ steps['gitops-pr'].output.remoteUrl }}
+      - title: Service in the catalog
+        icon: catalog
+        entityRef: ${{ parameters.service }}

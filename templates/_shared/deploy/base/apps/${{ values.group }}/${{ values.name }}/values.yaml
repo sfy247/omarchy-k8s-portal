@@ -8,8 +8,8 @@ image:
 
 containerPort: 8080
 
-# Request metrics at /metrics (Observability.cs), scraped via a PodMonitor:
-# Grafana's Service Health dashboard and the app alerts pick it up
+# Request metrics at /metrics (every service template provides them), scraped
+# via a PodMonitor: Grafana's Service Health dashboard and app alerts use them
 metrics:
   enabled: true
 

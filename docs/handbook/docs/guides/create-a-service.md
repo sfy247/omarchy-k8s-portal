@@ -10,8 +10,13 @@ Open **Create** and choose a template, for example **.NET web service**.
 | Description | One sentence: what the service does. |
 | Owning team | Your team. It owns the service in the catalog. |
 | App group | Where it runs; `services` for new services. |
-| PostgreSQL database | Tick if the service needs one (see [Add a database](add-a-database.md)). |
 | Repository location | Owner and repo name on GitHub, usually the same as the service name. |
+| Deploy to dev now | Leave ticked to deploy in the same run. Untick to create only the code; deploy later with [Deploy a service](deploy-a-service.md). |
+| PostgreSQL database | Tick if the service needs one (see [Add a database](add-a-database.md)). |
+
+Creating the application and deploying it are separate building blocks: the
+"Deploy to dev now" step is exactly the [Deploy a service](deploy-a-service.md)
+action, run for you.
 
 ## 2. What the portal creates
 
@@ -20,11 +25,11 @@ When you click **Create**, the portal:
 1. **Creates your repo** with working code, a hardened Dockerfile, CI, docs and
    a `catalog-info.yaml`.
 2. **Opens one pull request** in the platform repo that deploys the service to
-   dev: its settings in `apps/<group>/<name>/` and a rule that rolls out new
-   images automatically.
+   dev (if *Deploy to dev now* was ticked): its settings in
+   `apps/<group>/<name>/` and a rule that rolls out new images automatically.
 3. **Registers it in Discover**, so others can find it.
 
-The last screen links to all three.
+The last screen links to each of them.
 
 ## 3. Merge the pull request
 

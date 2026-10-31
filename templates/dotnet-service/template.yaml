@@ -5,9 +5,9 @@ metadata:
   title: .NET web service
   description: >-
     C# minimal API with health checks, metrics and JSON logs, a hardened
-    container image and CI, deployed by GitOps: one form creates the service
-    repo and opens one pull request in the platform repo that deploys it to dev
-    over HTTPS, with dashboards and alerts from day one.
+    container image and CI. Creates the service repo and registers it in the
+    catalog; optionally deploys it to dev in the same run (the same step as
+    the "Deploy a service" action).
   tags: [dotnet, csharp, kubernetes, argocd, observability, recommended]
 spec:
   owner: group:default/platform-team
@@ -39,13 +39,6 @@ spec:
           type: string
           enum: [services]
           default: services
-        database:
-          title: PostgreSQL database
-          description: >-
-            Lets the service reach the shared Postgres and load its connection
-            details. A platform engineer then runs `make database APP=<group>/<name>`.
-          type: boolean
-          default: false
 
     - title: Repository
       required: [repoUrl]
@@ -56,6 +49,25 @@ spec:
           ui:field: RepoUrlPicker
           ui:options:
             allowedHosts: [github.com]
+
+    # Deployment is a separate concern (templates/_shared/deploy, also the
+    # standalone "Deploy a service" action); offered here for one-click start
+    - title: Deploy
+      properties:
+        deploy:
+          title: Deploy to dev now
+          description: >-
+            Opens a pull request in the platform repo that deploys the service
+            to dev over HTTPS. You can also do this later with "Deploy a service".
+          type: boolean
+          default: true
+        database:
+          title: PostgreSQL database
+          description: >-
+            Lets the service reach the shared Postgres and load its connection
+            details. A platform engineer then runs `make database APP=<group>/<name>`.
+          type: boolean
+          default: false
 
   steps:
     # Platform repo coordinates come from the catalog, not this file
@@ -95,24 +107,42 @@ spec:
         deleteBranchOnMerge: true
         protectDefaultBranch: false
 
-    - id: fetch-gitops
+    # ---- Optional: deploy to dev (shared building block) ----
+    - id: fetch-base
       name: Generate deployment
+      if: ${{ parameters.deploy }}
       action: fetch:template
       input:
-        url: ./gitops
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/base
         targetPath: ./gitops
         values:
           name: ${{ parameters.name }}
           group: ${{ parameters.group }}
+          environment: dev
+          database: ${{ parameters.database }}
+          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
+
+    - id: fetch-environment
+      name: Generate dev settings
+      if: ${{ parameters.deploy }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/deploy-template'] }}/environment
+        targetPath: ./gitops
+        values:
+          name: ${{ parameters.name }}
+          group: ${{ parameters.group }}
+          environment: dev
           database: ${{ parameters.database }}
           image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
 
     - id: gitops-pr
       name: Open the deployment pull request
+      if: ${{ parameters.deploy }}
       action: publish:github:pull-request
       input:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
-        branchName: portal/add-${{ parameters.name }}
+        branchName: portal/deploy-${{ parameters.name }}-dev
         title: "Deploy ${{ parameters.name }} to dev"
         description: |
           Created by the developer portal for ${{ parameters.owner }}.
@@ -133,10 +163,17 @@ spec:
         catalogInfoPath: /catalog-info.yaml
 
   output:
+    text:
+      - title: Next steps
+        content: |
+          CI builds and publishes the image on every push to `main`.
+          {%- if parameters.deploy %} Merge the deployment pull request to run it in dev.{% else %}
+          When you're ready, deploy it with **Create → Deploy a service**.{% endif %}
     links:
       - title: Service repository
         url: ${{ steps['publish'].output.remoteUrl }}
       - title: Deployment pull request
+        if: ${{ parameters.deploy }}
         url: ${{ steps['gitops-pr'].output.remoteUrl }}
       - title: Open in catalog
         icon: catalog

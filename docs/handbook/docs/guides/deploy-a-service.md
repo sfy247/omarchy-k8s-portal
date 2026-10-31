@@ -1,0 +1,41 @@
+# Deploy a service
+
+Deploying is its own action, separate from creating the code. Use it for a
+service you created without *Deploy to dev now*, or for any service in the
+catalog, whatever language or template it came from.
+
+## 1. Fill in the form
+
+Open **Create** and choose **Deploy a service**.
+
+| Field | What to enter |
+|---|---|
+| Service | Pick it from the catalog. Its name, group and image come from its catalog entry. |
+| Environment | `dev` (the only environment enabled today). |
+| First deployment of this service | Leave ticked the first time. Untick when adding another environment, so the shared settings aren't overwritten. |
+| PostgreSQL database | Tick if the service needs one (see [Add a database](add-a-database.md)). |
+
+## 2. Merge the pull request
+
+The portal opens one pull request in the platform repo:
+
+| File | What it is |
+|---|---|
+| `apps/<group>/<name>/values.yaml` | Settings every environment shares: image, port, resources, metrics, database (first deployment only) |
+| `apps/<group>/<name>/values-<env>.yaml` | That environment's overrides; the image tag is kept current automatically |
+| `environments/<env>/<group>/image-updates/<name>.yaml` | Rolls out each new image CI publishes |
+
+Once merged, Argo CD deploys it to `https://<name>.<env>.kindell247` within a
+few minutes.
+
+## What the service must provide
+
+The platform deploys any container that follows the platform contract:
+
+- listens on port `8080`, with `GET /healthz` and `GET /readyz`
+- serves `GET /metrics` (request count and latency); otherwise Grafana shows
+  the service as down
+- logs JSON lines to stdout
+- publishes `ghcr.io/<owner>/<repo>:sha-<commit>` images from CI
+
+Services created from a portal template already do all of this.
