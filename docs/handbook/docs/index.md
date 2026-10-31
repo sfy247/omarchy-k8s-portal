@@ -22,6 +22,7 @@ New here? Start with these.
 | [Create a service](guides/create-a-service.md) | Starting something new |
 | [Ship a change](guides/ship-a-change.md) | Getting code and settings into dev |
 | [Add a database](guides/add-a-database.md) | Your service needs Postgres |
+| [Observe and troubleshoot](guides/observability.md) | Dashboards, logs, alerts, finding a root cause |
 | [Troubleshooting](guides/troubleshooting.md) | Something isn't working |
 
 ## Platform internals

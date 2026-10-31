@@ -1,7 +1,8 @@
 # Troubleshooting
 
-Start with your service's page in **Discover** → **Kubernetes** tab, then the
-table below.
+Start with **Grafana → Applications → Service Health** for your service (see
+[Observe and troubleshoot](observability.md)), or its page in **Discover** →
+**Kubernetes** tab, then the table below.
 
 | You see | Likely cause | What to do |
 |---|---|---|
