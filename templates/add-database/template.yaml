@@ -69,6 +69,7 @@ spec:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
         branchName: portal/database-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}-${{ context.task.id | truncate(8, true, '') }}
         title: "Database access for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}"
+        commitMessage: "Database access for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}"
         description: |
           Sets `database.enabled: true` in `values.yaml` (every environment).
 

@@ -181,6 +181,7 @@ spec:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
         branchName: portal/create-${{ parameters.name }}
         title: "Provision and deploy ${{ parameters.name }} to dev"
+        commitMessage: "Provision and deploy ${{ parameters.name }} to dev"
         description: |
           Created by the developer portal for ${{ parameters.owner }}.
 

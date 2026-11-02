@@ -83,6 +83,7 @@ spec:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
         branchName: portal/resources-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}-${{ context.task.id | truncate(8, true, '') }}
         title: "Resources for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} in ${{ parameters.environment }}: ${{ parameters.cpu }} CPU, ${{ parameters.memory }}"
+        commitMessage: "Resources for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} in ${{ parameters.environment }}: ${{ parameters.cpu }} CPU, ${{ parameters.memory }}"
         description: |
           Sets CPU request `${{ parameters.cpu }}` and memory request/limit `${{ parameters.memory }}` in `values-${{ parameters.environment }}.yaml`.
 

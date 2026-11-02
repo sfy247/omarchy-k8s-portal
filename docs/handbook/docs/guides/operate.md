@@ -16,7 +16,7 @@ Links are shareable: the URL keeps the service, environment and tab
 
 | Tab | Shows | Comes from |
 |---|---|---|
-| **Deployments** | Whether the environment matches Git, the platform revision and image running, replicas ready, the last sync, and the deployment history with links to each commit | Argo CD |
+| **Deployments** | The **delivery pipeline** (commit → CI → image → platform Git → Argo CD sync → rollout, each step's status, linked by commit), your **GitHub Actions runs** (status, duration, which one is running), the current deployment, and **Argo CD deploys** with what changed in each | GitHub Actions, Argo CD |
 | **Health** | Overall health, firing alerts, request rate, 5xx error ratio, p95 latency, each pod's readiness, restarts and last termination reason (e.g. `OOMKilled`), and Kubernetes events from the last 6 hours | Argo CD, Prometheus, Alertmanager, Loki |
 | **Logs** | Your service's log lines, filtered by level, time range and text. JSON fields are shown next to the message. | Loki |
 

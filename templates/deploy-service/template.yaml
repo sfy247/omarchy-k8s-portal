@@ -113,6 +113,7 @@ spec:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
         branchName: portal/deploy-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}
         title: "Deploy ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} to ${{ parameters.environment }}"
+        commitMessage: "Deploy ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} to ${{ parameters.environment }}"
         description: |
           Requested in the developer portal for `${{ parameters.service }}`.
 

@@ -103,3 +103,43 @@ export function useOperateApi() {
     [discovery, fetch],
   );
 }
+
+export type StageState = 'ok' | 'running' | 'failed' | 'waiting' | 'skipped';
+export type PipelineStage = {
+  key: string;
+  title: string;
+  state: StageState;
+  summary: string;
+  detail?: string;
+  at?: string;
+  url?: string;
+};
+export type Pipeline = {
+  repo?: string;
+  stages: PipelineStage[];
+  runs: {
+    id: number;
+    name: string;
+    number: number;
+    status: string;
+    conclusion: string | null;
+    event: string;
+    branch: string;
+    sha: string;
+    message: string;
+    author?: string;
+    startedAt: string;
+    updatedAt: string;
+    url: string;
+    deployed: boolean;
+  }[];
+  history: {
+    id: number;
+    revision: string;
+    deployedAt: string;
+    by: string;
+    message?: string;
+    author?: string;
+    url?: string;
+  }[];
+};

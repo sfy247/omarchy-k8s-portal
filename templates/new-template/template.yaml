@@ -82,6 +82,7 @@ spec:
         repoUrl: github.com?owner=${{ steps['portal'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['portal'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
         branchName: portal/template-${{ parameters.name }}
         title: "Add template: ${{ parameters.title }}"
+        commitMessage: "Add template: ${{ parameters.title }}"
         description: >-
           New template `${{ parameters.name }}` scaffolded from the portal. Fill in
           templates/${{ parameters.name }}/skeleton/ and the form in template.yaml,

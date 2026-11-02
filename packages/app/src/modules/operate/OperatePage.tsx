@@ -47,7 +47,14 @@ import {
 import Alert from '@material-ui/lab/Alert';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import RefreshIcon from '@material-ui/icons/Refresh';
-import { AppDetail, AppSummary, LogLine, useOperateApi } from './api';
+import {
+  AppDetail,
+  AppSummary,
+  LogLine,
+  Pipeline as PipelineData,
+  useOperateApi,
+} from './api';
+import { CiRuns, DeliveryPipeline, DeployHistory } from './Pipeline';
 import { usePermission } from '@backstage/plugin-permission-react';
 import { operateRestartPermission } from './permissions';
 
@@ -148,9 +155,28 @@ function ApplicationsTable({
 // ---------------------------------------------------------------- 2 view
 function Deployments({ d }: { d: AppDetail }) {
   const dep = d.deployment;
+  const call = useOperateApi();
+  // Refreshes with the rest of the page (d changes every 30s)
+  const pipeline = useAsyncRetry(
+    () => call<PipelineData>(`/applications/${d.target.argoApp}/pipeline`),
+    [d],
+  );
   return (
     <Grid container spacing={2}>
-      <Grid item xs={12} md={6}>
+      <Grid item xs={12}>
+        <InfoCard
+          title="Delivery pipeline"
+          subheader="Where the latest change is: GitHub Actions to Argo CD to running pods"
+        >
+          {pipeline.error && <ResponseErrorPanel error={pipeline.error} />}
+          {!pipeline.value && pipeline.loading && <Progress />}
+          {pipeline.value && <DeliveryPipeline p={pipeline.value} />}
+        </InfoCard>
+      </Grid>
+      <Grid item xs={12}>
+        {pipeline.value && <CiRuns p={pipeline.value} />}
+      </Grid>
+      <Grid item xs={12} md={5}>
         <InfoCard title="Current deployment">
           <List dense>
             <ListItem>
@@ -202,35 +228,10 @@ function Deployments({ d }: { d: AppDetail }) {
           ))}
         </InfoCard>
       </Grid>
-      <Grid item xs={12} md={6}>
-        <Table
-          title="Deployment history"
-          options={{
-            paging: false,
-            search: false,
-            padding: 'dense',
-            toolbar: true,
-          }}
-          columns={[
-            {
-              title: 'Deployed',
-              render: (h: any) => (
-                <span title={h.deployedAt}>{ago(h.deployedAt)}</span>
-              ),
-            },
-            {
-              title: 'Revision',
-              render: (h: any) =>
-                h.revisionUrl ? (
-                  <Link to={h.revisionUrl}>{h.revision.slice(0, 7)}</Link>
-                ) : (
-                  h.revision.slice(0, 7)
-                ),
-            },
-            { title: 'By', field: 'by' },
-          ]}
-          data={dep.history}
-        />
+      <Grid item xs={12} md={7}>
+        {pipeline.value && (
+          <DeployHistory p={pipeline.value} argocdUrl={d.links.argocd} />
+        )}
       </Grid>
     </Grid>
   );

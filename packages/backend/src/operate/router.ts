@@ -23,6 +23,7 @@ import { NotFoundError, InputError, NotAllowedError } from '@backstage/errors';
 import { AuthorizeResult } from '@backstage/plugin-permission-common';
 import { operateRestartPermission } from './permissions';
 import { Alertmanager, ArgoApp, ArgoCd, Loki, Prometheus } from './clients';
+import { GitHub, WorkflowRun } from './github';
 
 const SELECTOR = 'backstage.io/kubernetes-label-selector';
 const NAME_LABEL = 'app.kubernetes.io/name=';
@@ -71,6 +72,7 @@ export async function createRouter(options: {
   const prom = new Prometheus(config.getString('operate.prometheus.url'));
   const am = new Alertmanager(config.getString('operate.alertmanager.url'));
   const loki = new Loki(config.getString('operate.loki.url'), logger);
+  const github = new GitHub(config);
   const argoPublic = config.getOptionalString('operate.argocd.publicUrl');
   const grafana = config.getOptionalString('operate.grafana.publicUrl');
 
@@ -290,6 +292,185 @@ export async function createRouter(options: {
           }
         }),
       },
+    });
+  });
+
+  // Delivery pipeline: one change from commit to running pods, linked by SHA:
+  //   service commit -> CI run -> image sha-<commit> -> platform commit (tag
+  //   bump) -> Argo CD sync -> rollout
+  router.get('/applications/:app/pipeline', async (req, res) => {
+    await httpAuth.credentials(req, { allow: ['user'] });
+    const { app, t } = await resolve(req.params.app);
+    const entity = entityFor(t, await services());
+    const slug = entity?.metadata.annotations?.['github.com/project-slug'];
+    const platformSlug = app.spec.source?.repoURL
+      .replace(/^https:\/\/github\.com\//, '')
+      .replace(/\.git$/, '');
+    const deployment = await argo
+      .getDeployment(t.argoApp, t.namespace, t.name)
+      .catch(() => undefined);
+    const image: string | undefined =
+      deployment?.spec?.template?.spec?.containers?.[0]?.image;
+    const deployedSha = image?.match(/:sha-([0-9a-f]{40})$/)?.[1];
+
+    // Services built by their own CI publish sha-<commit> images; others
+    // (e.g. the hello-world apps, built by the provisioning) have no CI here
+    const builtByCi = Boolean(slug && slug !== platformSlug && deployedSha);
+    let runs: WorkflowRun[] = [];
+    let ciError: string | undefined;
+    if (builtByCi) {
+      runs = await github.runs(slug!, 10).catch(e => {
+        ciError = String(e);
+        return [];
+      });
+    }
+    const latest = runs[0];
+    const jobs = latest
+      ? await github.jobs(slug!, latest.id).catch(() => [])
+      : [];
+    const failedStep = jobs
+      .flatMap((j: any) => j.steps.map((s: any) => ({ job: j.name, ...s })))
+      .find((s: any) => s.conclusion === 'failure');
+
+    const history = [...(app.status?.history ?? [])].reverse().slice(0, 8);
+    const commits = platformSlug
+      ? await Promise.all(
+          history.map(h =>
+            github.commit(platformSlug, h.revision).catch(() => undefined),
+          ),
+        )
+      : [];
+    const revision = app.status?.sync?.revision;
+    const platformCommit =
+      platformSlug && revision
+        ? await github.commit(platformSlug, revision).catch(() => undefined)
+        : undefined;
+
+    type State = 'ok' | 'running' | 'failed' | 'waiting' | 'skipped';
+    const stage = (
+      key: string,
+      title: string,
+      state: State,
+      summary: string,
+      extra: { detail?: string; at?: string; url?: string } = {},
+    ) => ({ key, title, state, summary, ...extra });
+    const short = (sha?: string) => sha?.slice(0, 7);
+    const op = app.status?.operationState;
+    const health = app.status?.health?.status;
+    const ready = deployment?.status?.readyReplicas ?? 0;
+    const desired = deployment?.spec?.replicas ?? 0;
+    const ciState = (r?: WorkflowRun): State => {
+      if (!r) return 'skipped';
+      if (r.status !== 'completed') return 'running';
+      return r.conclusion === 'success' ? 'ok' : 'failed';
+    };
+    const newerImage =
+      latest &&
+      latest.conclusion === 'success' &&
+      deployedSha &&
+      latest.sha !== deployedSha;
+
+    const stages = [
+      builtByCi && latest
+        ? stage('commit', 'Commit', 'ok', latest.message, {
+            detail: `${short(latest.sha)} by ${latest.author ?? 'unknown'}`,
+            at: latest.startedAt,
+            url: `https://github.com/${slug}/commit/${latest.sha}`,
+          })
+        : stage('commit', 'Commit', 'skipped', 'No CI-built commits'),
+      builtByCi
+        ? stage(
+            'ci',
+            'CI',
+            ciState(latest),
+            latest
+              ? `${latest.name} #${latest.number}: ${
+                  latest.status === 'completed'
+                    ? latest.conclusion
+                    : latest.status
+                }`
+              : ciError ?? 'No runs yet',
+            {
+              detail: failedStep
+                ? `Failed at "${failedStep.name}" (${failedStep.job})`
+                : jobs.map((j: any) => j.name).join(' · '),
+              at: latest?.updatedAt,
+              url: latest?.url,
+            },
+          )
+        : stage('ci', 'CI', 'skipped', "Image not built by this service's CI", {
+            detail: image,
+          }),
+      stage(
+        'image',
+        'Image',
+        newerImage ? 'waiting' : 'ok',
+        newerImage
+          ? `Newer image ${short(latest!.sha)} waiting to roll out`
+          : `Running ${
+              image
+                ?.split(':')
+                .pop()
+                ?.replace(/^(sha-[0-9a-f]{7})[0-9a-f]+$/, '$1') ?? 'unknown'
+            }`,
+        { detail: image },
+      ),
+      stage(
+        'git',
+        'Platform Git',
+        revision ? 'ok' : 'waiting',
+        platformCommit?.message ??
+          (revision ? short(revision)! : 'Not deployed'),
+        {
+          detail: platformCommit
+            ? `${short(revision)} by ${platformCommit.author ?? 'unknown'}`
+            : undefined,
+          at: platformCommit?.date,
+          url: platformCommit?.url,
+        },
+      ),
+      stage(
+        'sync',
+        'Argo CD sync',
+        (() => {
+          if (op?.phase === 'Running') return 'running';
+          if (op?.phase === 'Failed' || op?.phase === 'Error') return 'failed';
+          return app.status?.sync?.status === 'Synced' ? 'ok' : 'waiting';
+        })(),
+        `${app.status?.sync?.status ?? 'Unknown'}${
+          op?.phase ? ` · last sync ${op.phase}` : ''
+        }`,
+        { detail: op?.message, at: op?.finishedAt ?? op?.startedAt },
+      ),
+      stage(
+        'rollout',
+        'Rollout',
+        (() => {
+          if (health === 'Healthy' && ready >= desired) return 'ok';
+          if (health === 'Degraded') return 'failed';
+          return 'running';
+        })(),
+        `${ready}/${desired} ready · ${health ?? 'Unknown'}`,
+        { detail: app.status?.health?.message },
+      ),
+    ];
+
+    res.json({
+      repo: builtByCi ? `https://github.com/${slug}` : undefined,
+      stages,
+      runs: runs.map(r => ({ ...r, deployed: r.sha === deployedSha })),
+      latestJobs: jobs,
+      history: history.map((h, i) => ({
+        id: h.id,
+        revision: h.revision,
+        deployedAt: h.deployedAt,
+        by: h.initiatedBy?.automated
+          ? 'Argo CD (automated)'
+          : h.initiatedBy?.username ?? 'unknown',
+        message: commits[i]?.message,
+        author: commits[i]?.author,
+        url: commits[i]?.url,
+      })),
     });
   });
 
