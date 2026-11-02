@@ -16,6 +16,7 @@ import { NotFoundError } from '@backstage/errors';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
+import { createAuthorizeAction } from './authorize';
 
 export default createBackendModule({
   pluginId: 'scaffolder',
@@ -25,9 +26,11 @@ export default createBackendModule({
       deps: {
         scaffolder: scaffolderActionsExtensionPoint,
         reader: coreServices.urlReader,
+        config: coreServices.rootConfig,
       },
-      async init({ scaffolder, reader }) {
+      async init({ scaffolder, reader, config }) {
         scaffolder.addActions(
+          createAuthorizeAction(config),
           createTemplateAction({
             id: 'platform:values:set',
             description:

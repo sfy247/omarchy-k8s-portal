@@ -63,6 +63,13 @@ spec:
       input:
         entityRef: ${{ parameters.service }}
 
+    # Only the service's owners (or the platform team) may change it
+    - id: authorize
+      name: Check you own this service
+      action: platform:authorize
+      input:
+        owner: ${{ steps['service'].output.entity.spec.owner }}
+
     - id: infra
       name: Provision infrastructure
       if: ${{ parameters.firstDeploy }}

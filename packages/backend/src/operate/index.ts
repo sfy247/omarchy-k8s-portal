@@ -17,8 +17,17 @@ export default createBackendPlugin({
         auth: coreServices.auth,
         httpRouter: coreServices.httpRouter,
         catalog: catalogServiceRef,
+        permissions: coreServices.permissions,
       },
-      async init({ config, logger, httpAuth, auth, httpRouter, catalog }) {
+      async init({
+        config,
+        logger,
+        httpAuth,
+        auth,
+        httpRouter,
+        catalog,
+        permissions,
+      }) {
         // Without operate.* config (e.g. plain local development) the page
         // explains what's missing instead of the backend failing to start
         if (!config.has('operate.argocd.url')) {
@@ -34,7 +43,14 @@ export default createBackendPlugin({
           return;
         }
         httpRouter.use(
-          await createRouter({ config, logger, httpAuth, auth, catalog }),
+          await createRouter({
+            config,
+            logger,
+            httpAuth,
+            auth,
+            catalog,
+            permissions,
+          }),
         );
       },
     });

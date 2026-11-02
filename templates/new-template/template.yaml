@@ -6,13 +6,17 @@ metadata:
   description: >-
     Scaffolds a new template folder in the portal repo and opens a pull request.
     Merge it and the template appears in the portal.
-  tags: [platform, meta]
+  tags: [platform, meta, platform-only]
 spec:
   owner: group:default/platform-team
   type: template
 
   parameters:
     - title: Template details
+      # Platform team only: the permission policy hides platform-only
+      # parameters and steps from everyone else
+      backstage:permissions:
+        tags: [platform-only]
       required: [name, title, description, owner, kind]
       properties:
         name:
@@ -40,6 +44,14 @@ spec:
           default: service
 
   steps:
+    - id: authorize
+      name: Check you're in the platform team
+      backstage:permissions:
+        tags: [platform-only]
+      action: platform:authorize
+      input:
+        owner: group:default/platform-team
+
     - id: portal
       name: Look up the portal repo
       action: catalog:fetch

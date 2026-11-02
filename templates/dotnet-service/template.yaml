@@ -77,6 +77,13 @@ spec:
       input:
         entityRef: resource:default/platform-gitops-repo
 
+    # You can create services for your own team(s) only
+    - id: authorize
+      name: Check you're in the owning team
+      action: platform:authorize
+      input:
+        owner: ${{ parameters.owner }}
+
     # ---- Create GitHub repo ----
     - id: repo
       name: Create GitHub repo

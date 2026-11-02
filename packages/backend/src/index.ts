@@ -43,11 +43,9 @@ backend.add(import('@backstage/plugin-catalog-backend-module-logs'));
 
 // permission plugin
 backend.add(import('@backstage/plugin-permission-backend'));
-// Allow-all until teams need different rights; swap for a real policy then.
-// See https://backstage.io/docs/permissions/getting-started
-backend.add(
-  import('@backstage/plugin-permission-backend-module-allow-all-policy'),
-);
+// Ownership-based policy: platform team does everything, owners operate
+// their services, everyone reads and creates (permissions/policy.ts)
+backend.add(import('./permissions/policy'));
 
 // search plugin
 backend.add(import('@backstage/plugin-search-backend'));

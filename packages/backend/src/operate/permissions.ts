@@ -1,0 +1,12 @@
+import { createPermission } from '@backstage/plugin-permission-common';
+
+/**
+ * Restarting a running application. A catalog-entity permission, so the policy
+ * can allow it for the service's owners. The frontend declares the same
+ * permission (modules/operate/permissions.ts) to hide the button.
+ */
+export const operateRestartPermission = createPermission({
+  name: 'operate.application.restart',
+  attributes: { action: 'update' },
+  resourceType: 'catalog-entity',
+});

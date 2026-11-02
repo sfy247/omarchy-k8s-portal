@@ -29,10 +29,8 @@ backend:
         ca:
           $file: /etc/postgres-ca/ca.crt
 
-  # Signs service-to-service tokens between plugins
-  auth:
-    keys:
-      - secret: ${BACKEND_SECRET}
+  # External access (static tokens for automation) is configured by the
+  # deployment in app-config.lab.yaml
 
 catalog:
   # Locations come from app-config.lab.yaml; no demo data in production

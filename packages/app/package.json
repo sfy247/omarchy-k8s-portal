@@ -33,6 +33,8 @@
     "@backstage/plugin-kubernetes": "^0.12.24",
     "@backstage/plugin-notifications": "^0.6.1",
     "@backstage/plugin-org": "^0.8.0",
+    "@backstage/plugin-permission-common": "^0.9.12",
+    "@backstage/plugin-permission-react": "^0.5.6",
     "@backstage/plugin-scaffolder": "^1.40.0",
     "@backstage/plugin-search": "^1.7.9",
     "@backstage/plugin-signals": "^0.0.36",

@@ -48,6 +48,8 @@ import Alert from '@material-ui/lab/Alert';
 import OpenInNewIcon from '@material-ui/icons/OpenInNew';
 import RefreshIcon from '@material-ui/icons/Refresh';
 import { AppDetail, AppSummary, LogLine, useOperateApi } from './api';
+import { usePermission } from '@backstage/plugin-permission-react';
+import { operateRestartPermission } from './permissions';
 
 const ago = (iso?: string) => {
   if (!iso) return '–';
@@ -593,6 +595,13 @@ function RequestAction({
   const call = useOperateApi();
   const [confirm, setConfirm] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; text: string }>();
+  // Owners (and the platform team) may change a service; the backend and the
+  // templates enforce this, here it only shapes the buttons
+  const { allowed: isOwner, loading: checking } = usePermission({
+    permission: operateRestartPermission,
+    resourceRef: d.entityRef,
+  });
+  const canChange = Boolean(d.entityRef) && isOwner;
   const form = (template: string, extra: object = {}) =>
     `/create/templates/default/${template}?${new URLSearchParams({
       formData: JSON.stringify({
@@ -616,27 +625,32 @@ function RequestAction({
       setResult({ ok: false, text: String(e) });
     }
   };
-  const actions: [string, string, string][] = [
-    ['Scale', form('scale-service'), 'Change the number of replicas'],
+  // [title, link, hint, owners only]
+  const actions: [string, string, string, boolean][] = [
+    ['Scale', form('scale-service'), 'Change the number of replicas', true],
     [
       'Change resources',
       form('change-resources'),
       'CPU and memory requests and limits',
+      true,
     ],
     [
       'Add a database',
       form('add-database'),
       'Postgres access for this service',
+      true,
     ],
     [
       'Deploy to another environment',
       form('deploy-service', { firstDeploy: false }),
       'Promote it',
+      true,
     ],
     [
       'Request help',
       form('request-help'),
       'Open an issue for the platform team, with this context attached',
+      false,
     ],
   ];
   return (
@@ -649,10 +663,18 @@ function RequestAction({
         variant="contained"
         color="primary"
         onClick={() => setConfirm(true)}
-        disabled={!d.entityRef}
+        disabled={!canChange}
       >
         Restart now
       </Button>
+      {!checking && !canChange && d.entityRef && (
+        <Box mt={1}>
+          <Alert severity="info">
+            Only the team that owns this service (or the platform team) can
+            restart or change it. You can still request help.
+          </Alert>
+        </Box>
+      )}
       {result && (
         <Box mt={1}>
           <Alert severity={result.ok ? 'success' : 'error'}>
@@ -661,13 +683,13 @@ function RequestAction({
         </Box>
       )}
       <List dense>
-        {actions.map(([title, url, hint]) => (
+        {actions.map(([title, url, hint, ownersOnly]) => (
           <ListItem
             key={title}
             button
             component="a"
             href={url}
-            disabled={!d.entityRef}
+            disabled={!d.entityRef || (ownersOnly && !canChange)}
           >
             <ListItemText primary={title} secondary={hint} />
           </ListItem>

@@ -15,10 +15,13 @@ import {
   HttpAuthService,
   LoggerService,
   AuthService,
+  PermissionsService,
 } from '@backstage/backend-plugin-api';
 import { CatalogService } from '@backstage/plugin-catalog-node';
 import { Entity, stringifyEntityRef } from '@backstage/catalog-model';
-import { NotFoundError, InputError } from '@backstage/errors';
+import { NotFoundError, InputError, NotAllowedError } from '@backstage/errors';
+import { AuthorizeResult } from '@backstage/plugin-permission-common';
+import { operateRestartPermission } from './permissions';
 import { Alertmanager, ArgoApp, ArgoCd, Loki, Prometheus } from './clients';
 
 const SELECTOR = 'backstage.io/kubernetes-label-selector';
@@ -61,8 +64,9 @@ export async function createRouter(options: {
   httpAuth: HttpAuthService;
   auth: AuthService;
   catalog: CatalogService;
+  permissions: PermissionsService;
 }) {
-  const { config, logger, httpAuth, auth, catalog } = options;
+  const { config, logger, httpAuth, auth, catalog, permissions } = options;
   const argo = ArgoCd.fromConfig(config);
   const prom = new Prometheus(config.getString('operate.prometheus.url'));
   const am = new Alertmanager(config.getString('operate.alertmanager.url'));
@@ -322,6 +326,24 @@ export async function createRouter(options: {
   router.post('/applications/:app/restart', async (req, res) => {
     const credentials = await httpAuth.credentials(req, { allow: ['user'] });
     const { t } = await resolve(req.params.app);
+    // Only the service's owners (or the platform team): see the permission policy
+    const entity = entityFor(t, await services());
+    if (!entity)
+      throw new NotFoundError(`${t.argoApp} isn't a catalog service`);
+    const [decision] = await permissions.authorize(
+      [
+        {
+          permission: operateRestartPermission,
+          resourceRef: stringifyEntityRef(entity),
+        },
+      ],
+      { credentials },
+    );
+    if (decision.result !== AuthorizeResult.ALLOW) {
+      throw new NotAllowedError(
+        `Only the owners of ${entity.metadata.name} can restart it`,
+      );
+    }
     await argo.restartDeployment(t.argoApp, t.namespace, t.name);
     logger.info(
       `Restart of ${t.argoApp} requested by ${credentials.principal.userEntityRef}`,
