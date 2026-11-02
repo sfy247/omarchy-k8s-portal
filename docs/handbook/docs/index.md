@@ -22,6 +22,7 @@ New here? Start with these.
 | [Create a service](guides/create-a-service.md) | Starting something new |
 | [Deploy a service](guides/deploy-a-service.md) | Running an existing service in an environment |
 | [Operate a service](guides/operate.md) | Deployments, health, logs; restart, scale, get help |
+| [Who can do what](guides/permissions.md) | A button is greyed out, or a template says you're not allowed |
 | [Ship a change](guides/ship-a-change.md) | Getting code and settings into dev |
 | [Add a database](guides/add-a-database.md) | Your service needs Postgres |
 | [Observe and troubleshoot](guides/observability.md) | Dashboards, logs, alerts, finding a root cause |

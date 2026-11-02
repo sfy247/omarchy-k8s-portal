@@ -45,6 +45,9 @@ See [Observe and troubleshoot](observability.md) for a worked example.
 | **Deploy to another environment** | The [Deploy a service](deploy-a-service.md) action |
 | **Request help** | An issue in the platform repo, with the service, environment and links filled in |
 
+Restart and the pull-request actions are for the service's owning team and
+the platform team ([Who can do what](permissions.md)); anyone can request help.
+
 Everything except a restart changes Git: you get a pull request, someone
 reviews it, and Argo CD applies it after merge. Only the keys you changed are
 edited; the rest of the file, comments included, stays as it was.
