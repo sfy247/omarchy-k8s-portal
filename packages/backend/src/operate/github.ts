@@ -62,11 +62,12 @@ export class GitHub {
     return value;
   }
 
+  /** Newest first. Cached 5s, so a page polling for live runs stays cheap. */
   async runs(slug: string, limit = 10): Promise<WorkflowRun[]> {
     const res = await this.get<any>(
       slug,
       `/actions/runs?per_page=${limit}`,
-      15_000,
+      5_000,
     );
     return res.workflow_runs.map((r: any) => ({
       id: r.id,
@@ -87,11 +88,7 @@ export class GitHub {
 
   /** Jobs and steps of one run (to name the step that failed). */
   async jobs(slug: string, runId: number) {
-    const res = await this.get<any>(
-      slug,
-      `/actions/runs/${runId}/jobs`,
-      15_000,
-    );
+    const res = await this.get<any>(slug, `/actions/runs/${runId}/jobs`, 5_000);
     return res.jobs.map((j: any) => ({
       name: j.name,
       status: j.status,
@@ -103,6 +100,8 @@ export class GitHub {
         name: s.name,
         status: s.status,
         conclusion: s.conclusion,
+        startedAt: s.started_at,
+        completedAt: s.completed_at,
       })),
     }));
   }

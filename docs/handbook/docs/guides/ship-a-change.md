@@ -11,6 +11,14 @@
 You'll see a commit by `argocd-image-updater` in the platform repo's history
 for each rollout.
 
+### Watch it in the portal
+
+- **Discover → your service → CI/CD**: your GitHub Actions runs. While one is
+  running the tab updates every 5 seconds, showing each job and step as it
+  goes; click any run to see its jobs.
+- **Operate → your service → Deployments**: the whole path, from commit and CI
+  to image, Argo CD sync and rollout.
+
 !!! note "Builds can be blocked"
     If the scan finds a *fixable critical* vulnerability, the image is not
     published and nothing is deployed. The CI log shows which package to update.

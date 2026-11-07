@@ -697,6 +697,40 @@ export async function createRouter(options: {
     });
   });
 
+  // CI/CD tab on a service's catalog page: its GitHub Actions runs, and the
+  // jobs and steps of the newest one, polled by the page while runs are live
+  async function ciRepo(entityRef: string) {
+    const entity = await catalog.getEntityByRef(entityRef, {
+      credentials: await auth.getOwnServiceCredentials(),
+    });
+    const slug = entity?.metadata.annotations?.['github.com/project-slug'];
+    if (!slug) throw new NotFoundError(`${entityRef} has no GitHub repository`);
+    return slug;
+  }
+
+  router.get('/ci', async (req, res) => {
+    await httpAuth.credentials(req, { allow: ['user'] });
+    const slug = await ciRepo(String(req.query.entity ?? ''));
+    const runs = await github.runs(slug, 15);
+    // Live view: the newest run that's still going, else the newest run
+    const focus = runs.find(r => r.status !== 'completed') ?? runs[0];
+    res.json({
+      repo: `https://github.com/${slug}`,
+      runs,
+      focus: focus
+        ? { run: focus, jobs: await github.jobs(slug, focus.id) }
+        : undefined,
+    });
+  });
+
+  router.get('/ci/runs/:id/jobs', async (req, res) => {
+    await httpAuth.credentials(req, { allow: ['user'] });
+    const slug = await ciRepo(String(req.query.entity ?? ''));
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) throw new InputError('bad run id');
+    res.json({ jobs: await github.jobs(slug, id) });
+  });
+
   router.get('/applications/:app/logs', async (req, res) => {
     await httpAuth.credentials(req, { allow: ['user'] });
     const { t } = await resolve(req.params.app);
