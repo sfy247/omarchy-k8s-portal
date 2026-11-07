@@ -4,8 +4,8 @@
 //                            deploy: repo variables GITOPS_REPOSITORY and
 //                            GITOPS_APP_ID, secret GITOPS_APP_PRIVATE_KEY
 //                            (the GitOps GitHub App), from platform.gitops.*
-//   platform:head-commit     the latest commit on a repo's default branch
-//                            (its CI tags images sha-<commit>)
+//   platform:head-commit     the latest commit (and name) of a repo's default
+//                            branch (its CI tags images sha-<commit>)
 import { Config } from '@backstage/config';
 import {
   DefaultGithubCredentialsProvider,
@@ -133,7 +133,7 @@ export function createHeadCommitAction(config: Config) {
     supportsDryRun: true,
     schema: {
       input: { slug: z => z.string().describe('owner/repo') },
-      output: { sha: z => z.string() },
+      output: { sha: z => z.string(), branch: z => z.string() },
     },
     async handler(ctx) {
       const [owner, repo] = ctx.input.slug.split('/');
@@ -146,6 +146,7 @@ export function createHeadCommitAction(config: Config) {
         `/commits/${info.default_branch}`,
       );
       ctx.output('sha', commit.sha);
+      ctx.output('branch', info.default_branch);
     },
   });
 }

@@ -19,6 +19,7 @@ New here? Start with these.
 | Guide | When you need it |
 |---|---|
 | [Getting started](guides/getting-started.md) | First visit: how the platform works |
+| [Service Contract](guides/service-contract.md) | What every service must do to run here, in any language |
 | [Create a service](guides/create-a-service.md) | Starting something new |
 | [Deploy a service](guides/deploy-a-service.md) | Running an existing service in an environment |
 | [Operate a service](guides/operate.md) | Deployments, health, logs; restart, scale, get help |

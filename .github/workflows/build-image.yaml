@@ -6,9 +6,9 @@ name: build-image
 on:
   push:
     branches: [main]
-    paths-ignore: ["templates/**", "docs/**", "org/**", "*.md", "catalog-info.yaml", ".github/workflows/dotnet-service.yaml"]
+    paths-ignore: ["templates/**", "docs/**", "org/**", "*.md", "catalog-info.yaml", ".github/workflows/dotnet-service.yaml", ".github/workflows/container-service.yaml", ".github/actions/service-contract/**"]
   pull_request:
-    paths-ignore: ["templates/**", "docs/**", "org/**", "*.md", "catalog-info.yaml", ".github/workflows/dotnet-service.yaml"]
+    paths-ignore: ["templates/**", "docs/**", "org/**", "*.md", "catalog-info.yaml", ".github/workflows/dotnet-service.yaml", ".github/workflows/container-service.yaml", ".github/actions/service-contract/**"]
   workflow_dispatch:
 
 concurrency:

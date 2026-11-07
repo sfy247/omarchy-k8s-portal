@@ -1,0 +1,117 @@
+# Reusable CI for any container service: the language-neutral half of every
+# pipeline, and on its own the "Bring your own container" pipeline.
+#
+#   image:      build the Dockerfile -> Service Contract check -> scan
+#               -> push ghcr.io/<owner>/<repo>:sha-<commit> (main only)
+#   deploy-dev: commit that tag to the service's dev values in the platform
+#               repo (GitOps GitHub App); Argo CD rolls it out
+#
+# Language pipelines (e.g. dotnet-service.yaml) run their own build and tests,
+# then call this. Fix or upgrade it here once and every service picks it up.
+name: container-service
+
+on:
+  workflow_call:
+    inputs:
+      project-path:
+        description: Docker build context
+        type: string
+        default: "."
+      dockerfile:
+        description: Dockerfile, relative to the repo root (default <project-path>/Dockerfile)
+        type: string
+        default: ""
+      gitops-repository:
+        description: Platform repo name (same owner); empty = don't deploy
+        type: string
+        default: ""
+      gitops-values-file:
+        description: The service's dev values in the platform repo
+        type: string
+        default: ""
+      gitops-app-id:
+        type: string
+        default: ""
+    secrets:
+      GITOPS_APP_PRIVATE_KEY:
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: type=sha,format=long,prefix=sha-
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ inputs.project-path }}
+          file: ${{ inputs.dockerfile != '' && inputs.dockerfile || format('{0}/Dockerfile', inputs.project-path) }}
+          load: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Runs it the way the platform does and checks health, metrics, logs
+      - name: Service Contract
+        uses: sfy247/omarchy-k8s-portal/.github/actions/service-contract@main
+        with:
+          image: ${{ steps.meta.outputs.tags }}
+
+      # Push only if no fixable critical vulnerabilities
+      - name: Scan image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.meta.outputs.tags }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker push "${{ steps.meta.outputs.tags }}"
+
+  # Deploy to dev by Git: the new tag goes into the platform repo, Argo CD
+  # rolls it out. Only for main, and only once the image is published.
+  deploy-dev:
+    needs: image
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && inputs.gitops-repository != '' && inputs.gitops-values-file != ''
+    runs-on: ubuntu-latest
+    # One deploy at a time per service, in push order
+    concurrency:
+      group: deploy-dev-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - uses: sfy247/omarchy-k8s-portal/.github/actions/gitops-update@main
+        with:
+          repository: ${{ inputs.gitops-repository }}
+          file: ${{ inputs.gitops-values-file }}
+          key: .image.tag
+          value: sha-${{ github.sha }}
+          app-id: ${{ inputs.gitops-app-id }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}

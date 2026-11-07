@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: ${{ values.name }}
+  description: ${{ values.description }}
+  annotations:
+    github.com/project-slug: ${{ values.repoOwner }}/${{ values.repoName }}
+{%- if values.docs %}
+    backstage.io/techdocs-ref: dir:.
+{%- endif %}
+    # Kubernetes tab: the platform's web-service chart labels workloads by name
+    backstage.io/kubernetes-label-selector: app.kubernetes.io/name=${{ values.name }}
+  tags: [container]
+spec:
+  type: service
+  lifecycle: experimental
+  owner: ${{ values.owner }}
+  system: ${{ values.group }}

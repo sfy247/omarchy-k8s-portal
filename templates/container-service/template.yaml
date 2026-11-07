@@ -1,0 +1,314 @@
+# "Bring your own container": any language. The platform needs the image to
+# keep the Service Contract (handbook); CI checks it on every build.
+#   new repo:      a minimal example that already passes the contract (replace it)
+#   existing repo: a pull request adding the platform CI and a catalog entry;
+#                  your code, Dockerfile and workflows aren't touched
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: container-service
+  title: Bring your own container
+  description: >-
+    Any language: your Dockerfile, the platform's pipeline. CI builds the image,
+    checks it against the Service Contract, scans and publishes it, and deploys
+    it by Git. Start a new repository or bring an existing one.
+  tags: [container, any-language, kubernetes, argocd, approved]
+spec:
+  owner: group:default/platform-team
+  type: service
+
+  parameters:
+    - title: Configure application
+      required: [name, description, owner, group]
+      properties:
+        name:
+          title: Name
+          type: string
+          description: Lowercase letters, digits and dashes. Used for the image, hostname and catalog.
+          pattern: "^[a-z][a-z0-9-]{2,30}$"
+          ui:autofocus: true
+        description:
+          title: Description
+          type: string
+        owner:
+          title: Owning team
+          type: string
+          ui:field: OwnerPicker
+          ui:options:
+            catalogFilter:
+              kind: Group
+        group:
+          title: App group
+          description: The platform group (and Kubernetes namespace) the service joins.
+          type: string
+          enum: [services]
+          default: services
+
+    - title: GitHub repository
+      required: [mode, repoUrl]
+      properties:
+        mode:
+          title: Repository
+          type: string
+          enum: [new, existing]
+          enumNames:
+            - Start a new repository (with an example you replace)
+            - Use my existing repository (opens a pull request)
+          default: new
+        repoUrl:
+          title: Repository location
+          type: string
+          ui:field: RepoUrlPicker
+          ui:options:
+            allowedHosts: [github.com]
+      dependencies:
+        mode:
+          oneOf:
+            - properties:
+                mode: { const: new }
+            - properties:
+                mode: { const: existing }
+                contextPath:
+                  title: Docker build context
+                  description: Folder with your Dockerfile, relative to the repo root.
+                  type: string
+                  default: "."
+
+    - title: Infrastructure and deployment
+      properties:
+        database:
+          title: PostgreSQL database
+          description: >-
+            Lets the service reach the shared Postgres and load its connection
+            details. A platform engineer then runs `make database APP=<group>/<name>`.
+          type: boolean
+          default: false
+        deploy:
+          title: Provision and deploy to dev now (new repositories)
+          description: >-
+            For an existing repository, deploy after merging the pull request and
+            its first CI run, with "Deploy a service".
+          type: boolean
+          default: true
+
+  steps:
+    - id: platform
+      name: Look up platform settings
+      action: catalog:fetch
+      input:
+        entityRef: resource:default/platform-gitops-repo
+
+    - id: authorize
+      name: Check you're in the owning team
+      action: platform:authorize
+      input:
+        owner: ${{ parameters.owner }}
+
+    # ---- Create GitHub repo (new) ----
+    - id: repo
+      name: Create GitHub repo
+      if: ${{ parameters.mode == 'new' }}
+      action: github:repo:create
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        description: ${{ parameters.description }}
+        # Public: free Actions minutes and the cluster pulls images without credentials
+        repoVisibility: public
+        deleteBranchOnMerge: true
+
+    # Before the first push, so the first CI run can deploy
+    - id: ci-credentials
+      name: Generate CI/CD (deploy credentials)
+      action: platform:ci-credentials
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+
+    - id: catalog-files
+      name: Generate the catalog entry and docs
+      action: fetch:template
+      input:
+        url: ./skeleton
+        targetPath: ./service
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+          owner: ${{ parameters.owner }}
+          group: ${{ parameters.group }}
+          repoOwner: ${{ (parameters.repoUrl | parseRepoUrl).owner }}
+          repoName: ${{ (parameters.repoUrl | parseRepoUrl).repo }}
+          docs: ${{ parameters.mode == 'new' }}
+
+    - id: starter
+      name: Generate the example app (replace it with yours)
+      if: ${{ parameters.mode == 'new' }}
+      action: fetch:template
+      input:
+        url: ./starter
+        targetPath: ./service
+        values:
+          name: ${{ parameters.name }}
+
+    # ---- Generate CI/CD ----
+    - id: ci
+      name: Generate CI/CD (pipeline)
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/repo
+        targetPath: ./service
+        values:
+          language: container
+          projectPath: ${{ parameters.contextPath or '.' }}
+          name: ${{ parameters.name }}
+          group: ${{ parameters.group }}
+          workflowsRepo: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/portal-workflows'] }}
+
+    - id: publish
+      name: Push code and pipeline to the repo
+      if: ${{ parameters.mode == 'new' }}
+      action: github:repo:push
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        sourcePath: ./service
+        defaultBranch: main
+        protectDefaultBranch: false
+
+    # ---- Existing repository: one pull request, nothing overwritten ----
+    - id: adopt-tidy
+      name: Keep your repository's files
+      if: ${{ parameters.mode == 'existing' }}
+      action: fs:delete
+      input:
+        files: [service/mkdocs.yml, service/docs]
+
+    # Its own workflow file, next to any CI you already have
+    - id: adopt-ci
+      name: Name the platform pipeline platform-ci.yaml
+      if: ${{ parameters.mode == 'existing' }}
+      action: fs:rename
+      input:
+        files:
+          - from: service/.github/workflows/ci.yaml
+            to: service/.github/workflows/platform-ci.yaml
+
+    - id: adopt-docs
+      name: Add the Service Contract notes
+      if: ${{ parameters.mode == 'existing' }}
+      action: fetch:template
+      input:
+        url: ./adopt
+        targetPath: ./service
+        values:
+          name: ${{ parameters.name }}
+          description: ${{ parameters.description }}
+
+    - id: head
+      name: Find the repository's default branch
+      if: ${{ parameters.mode == 'existing' }}
+      action: platform:head-commit
+      input:
+        slug: ${{ (parameters.repoUrl | parseRepoUrl).owner }}/${{ (parameters.repoUrl | parseRepoUrl).repo }}
+
+    - id: adopt-pr
+      name: Open a pull request in your repository
+      if: ${{ parameters.mode == 'existing' }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+        branchName: portal/onboard-${{ parameters.name }}
+        title: "Onboard ${{ parameters.name }} to the platform"
+        commitMessage: "Onboard ${{ parameters.name }} to the platform"
+        description: |
+          Adds the platform's pipeline and a catalog entry. Nothing existing is changed.
+
+          - `.github/workflows/platform-ci.yaml`: builds `${{ parameters.contextPath or '.' }}/Dockerfile`,
+            checks the image against the Service Contract, scans and publishes it, and deploys it to dev by Git
+          - `catalog-info.yaml`: ${{ parameters.name }} in the portal (Discover, CI/CD, Operate)
+          - `SERVICE-CONTRACT.md`: what the image must do to pass the check
+
+          After merging, the first CI run shows whether the image keeps the contract.
+          Then deploy it with **Create → Deploy a service**.
+        sourcePath: ./service
+
+    # ---- Provision infrastructure and deploy (new repositories) ----
+    - id: infra
+      name: Provision infrastructure
+      if: ${{ parameters.mode == 'new' and parameters.deploy }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/infra
+        targetPath: ./platform
+        values:
+          name: ${{ parameters.name }}
+          group: ${{ parameters.group }}
+          database: ${{ parameters.database }}
+          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
+
+    - id: deploy
+      name: Deploy application to dev
+      if: ${{ parameters.mode == 'new' and parameters.deploy }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/deploy
+        targetPath: ./platform
+        values:
+          name: ${{ parameters.name }}
+          group: ${{ parameters.group }}
+          environment: dev
+          # CI publishes sha-<commit> for the commit just pushed
+          imageTag: sha-${{ steps['publish'].output.commitHash }}
+
+    - id: platform-pr
+      name: Open the platform pull request (infrastructure + deployment)
+      if: ${{ parameters.mode == 'new' and parameters.deploy }}
+      action: publish:github:pull-request
+      input:
+        repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
+        branchName: portal/create-${{ parameters.name }}
+        title: "Provision and deploy ${{ parameters.name }} to dev"
+        commitMessage: "Provision and deploy ${{ parameters.name }} to dev"
+        description: |
+          Created by the developer portal for ${{ parameters.owner }} (bring your own container).
+
+          | Stage | File |
+          |---|---|
+          | Provision infrastructure | `apps/${{ parameters.group }}/${{ parameters.name }}/values.yaml` |
+          | Deploy application | `apps/${{ parameters.group }}/${{ parameters.name }}/values-dev.yaml` (CI keeps its image tag current) |
+
+          After merging, Argo CD deploys it to `https://${{ parameters.name }}.dev.<lab domain>`.
+          Database requested: ${{ parameters.database }}.
+        sourcePath: ./platform
+
+    - id: register
+      name: Register in the catalog
+      action: catalog:register
+      input:
+        catalogInfoUrl: ${{ steps['publish'].output.repoContentsUrl + '/catalog-info.yaml' if parameters.mode == 'new' else 'https://github.com/' + (parameters.repoUrl | parseRepoUrl).owner + '/' + (parameters.repoUrl | parseRepoUrl).repo + '/blob/' + steps['head'].output.branch + '/catalog-info.yaml' }}
+        # Existing repos: the entry appears once the pull request is merged
+        optional: ${{ parameters.mode == 'existing' }}
+
+  output:
+    text:
+      - title: Next steps
+        content: |
+          {%- if parameters.mode == 'new' %}
+          The first CI run is building the example image and checking it against the
+          Service Contract. Replace `app/` and the `Dockerfile` with your own code;
+          keep the contract and CI keeps deploying it.
+          {%- if parameters.deploy %} Merge the platform pull request to run it in dev.{% endif %}
+          {%- else %}
+          Merge the pull request in your repository. Its first CI run shows whether
+          your image keeps the Service Contract; then deploy it with
+          **Create → Deploy a service**.
+          {%- endif %}
+    links:
+      - title: GitHub repository
+        url: https://github.com/${{ (parameters.repoUrl | parseRepoUrl).owner }}/${{ (parameters.repoUrl | parseRepoUrl).repo }}
+      - title: Pull request in your repository
+        if: ${{ parameters.mode == 'existing' }}
+        url: ${{ steps['adopt-pr'].output.remoteUrl }}
+      - title: Platform pull request
+        if: ${{ parameters.mode == 'new' and parameters.deploy }}
+        url: ${{ steps['platform-pr'].output.remoteUrl }}
+      - title: Open in catalog
+        icon: catalog
+        entityRef: ${{ steps['register'].output.entityRef }}

@@ -8,6 +8,7 @@ nav:
   - Home: index.md
   - Developer guides:
       - Getting started: guides/getting-started.md
+      - Service Contract: guides/service-contract.md
       - Create a service: guides/create-a-service.md
       - Deploy a service: guides/deploy-a-service.md
       - Operate a service: guides/operate.md

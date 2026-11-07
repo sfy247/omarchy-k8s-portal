@@ -1,0 +1,15 @@
+# The Service Contract, checked: runs an image the way the platform runs it
+# (UID 10001, read-only root, no capabilities) and verifies health, metrics
+# and JSON logs. Results go to the job summary. Used by the shared CI before
+# an image is scanned and pushed.
+name: service-contract
+description: Check an image against the platform's Service Contract
+inputs:
+  image:
+    description: Image (already built locally) to check
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: ${{ github.action_path }}/check.sh "${{ inputs.image }}"

@@ -6,7 +6,7 @@ the first three; the portal does the rest.
 | # | Stage | Who | What happens |
 |---|---|---|---|
 | 1 | Create application | You | Open **Create** in the portal |
-| 2 | Select approved template | You | Pick a template, e.g. **.NET web service**. Only templates reviewed by the platform team are listed. |
+| 2 | Select approved template | You | A golden path such as **.NET web service**, or **Bring your own container** for any other language (a new repository, or your existing one). Only templates reviewed by the platform team are listed. Both keep the [Service Contract](service-contract.md). |
 | 3 | Configure application | You | Fill in the form (below) |
 | 4 | Create GitHub repo | Portal | An empty repo under the owner you chose, with your application code |
 | 5 | Generate CI/CD | Portal | A pipeline that builds, tests, scans and publishes the image, then deploys it by committing its tag to the platform repo |

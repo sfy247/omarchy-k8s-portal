@@ -4,7 +4,9 @@ Created from a developer portal template.
 
 ## Platform contract for services
 
-Every service template must produce a service that:
+The full rules are the handbook's **Service Contract** page; CI checks every
+image against it (`container-service.yaml`). In short, a service template must
+produce a service that:
 
 - serves `GET /healthz` (liveness) and `GET /metrics` with
   `http_requests_total{method,route,status}` and

@@ -33,7 +33,10 @@ Service CI ──> ghcr.io/<owner>/<repo>:sha-<commit>
 | `org/org.yaml` | Teams and users |
 | `catalog-info.yaml` | The portal itself, and `platform-gitops-repo` (where templates send PRs) |
 | `.github/workflows/build-image.yaml` | Build, test, Trivy scan, push the portal image |
-| `.github/workflows/dotnet-service.yaml` | Reusable CI every generated .NET service calls |
+| `.github/workflows/container-service.yaml` | Reusable CI for any container: build, Service Contract check, scan, push, deploy-dev |
+| `.github/workflows/dotnet-service.yaml` | .NET build and tests, then `container-service.yaml` |
+| `.github/actions/service-contract/` | The Service Contract check (`check.sh` also runs locally) |
+| `.github/actions/gitops-update/` | Deploy by Git: commit an image tag to the platform repo |
 
 ## Templates
 
@@ -43,6 +46,9 @@ Only templates under `templates/` are accepted by the catalog (approved
 through review). Language templates own their code only; CI/CD,
 infrastructure and deployment come from `templates/_shared`:
 
+- **container-service** ("Bring your own container"): any language. A new
+  repo from a minimal example that keeps the Service Contract, or a PR adding
+  the platform CI and catalog entry to an existing repo.
 - **dotnet-service**: C# minimal API (health checks, metrics, JSON logs,
   chiseled image running as UID 10001) and TechDocs, through all Create
   stages: repo, CI/CD, infrastructure, deployment to dev.
