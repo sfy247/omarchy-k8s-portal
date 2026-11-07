@@ -82,6 +82,30 @@ export class ArgoCd {
     return this.call(`/api/v1/applications/${encodeURIComponent(name)}`);
   }
 
+  /** Live manifest of any resource the application manages. */
+  async getResource(
+    app: string,
+    r: {
+      namespace: string;
+      name: string;
+      group: string;
+      version: string;
+      kind: string;
+    },
+  ) {
+    const q = new URLSearchParams({
+      namespace: r.namespace,
+      resourceName: r.name,
+      version: r.version,
+      kind: r.kind,
+      group: r.group,
+    });
+    const res = await this.call(
+      `/api/v1/applications/${encodeURIComponent(app)}/resource?${q}`,
+    );
+    return JSON.parse(res.manifest);
+  }
+
   async getDeployment(app: string, namespace: string, name: string) {
     const q = new URLSearchParams({
       namespace,

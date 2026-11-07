@@ -22,9 +22,12 @@ spec:
           type: string
           ui:field: EntityPicker
           ui:options:
+            # Services, and the databases they use
             catalogFilter:
-              kind: Component
-              spec.type: service
+              - kind: Component
+                spec.type: service
+              - kind: Resource
+                spec.type: database
             defaultKind: Component
             allowArbitraryValues: false
         environment:
@@ -69,9 +72,9 @@ spec:
       action: github:issues:create
       input:
         repoUrl: github.com?owner=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-owner'] }}&repo=${{ steps['platform'].output.entity.metadata.annotations['platform.lab/repo-name'] }}
-        title: "[${{ parameters.urgency }}] ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }} (${{ parameters.environment }}): ${{ parameters.summary }}"
+        title: "[${{ parameters.urgency }}] ${{ steps['service'].output.entity.metadata.name }} (${{ parameters.environment }}): ${{ parameters.summary }}"
         body: |
-          **Service:** `${{ parameters.service }}` (group `${{ steps['service'].output.entity.spec.system }}`, app `${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}`)
+          **${{ steps['service'].output.entity.kind }}:** `${{ parameters.service }}` (group `${{ steps['service'].output.entity.spec.system }}`)
           **Environment:** ${{ parameters.environment }}
           **Urgency:** ${{ parameters.urgency }}
           **Owner:** ${{ steps['service'].output.entity.spec.owner }}
@@ -79,7 +82,7 @@ spec:
           ${{ parameters.details or '_No details given._' }}
 
           ---
-          Argo CD application: `${{ steps['service'].output.entity.spec.system }}-${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}-${{ parameters.environment }}`.
+          Argo CD application: see the portal's Operate page for this ${{ steps['service'].output.entity.kind | lower }}.
           In the portal: Operate → this service → ${{ parameters.environment }} for deployments, health and logs.
 
           Opened from the developer portal (Operate → Request help).

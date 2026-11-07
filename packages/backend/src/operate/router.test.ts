@@ -1,4 +1,4 @@
-import { targetOf } from './router';
+import { databaseTargetOf, targetOf } from './router';
 import { ArgoApp } from './clients';
 
 const app = (
@@ -28,6 +28,7 @@ describe('targetOf', () => {
         ),
       ),
     ).toEqual({
+      kind: 'service',
       argoApp: 'hello-world-python-dev',
       environment: 'dev',
       group: 'hello-world',
@@ -47,5 +48,38 @@ describe('targetOf', () => {
         app({ environment: 'dev', 'app.kubernetes.io/part-of': 'app-data' }),
       ),
     ).toBeUndefined();
+  });
+});
+
+describe('databaseTargetOf', () => {
+  it('maps a database resource to its CloudNativePG cluster', () => {
+    const pgApp = {
+      metadata: {
+        name: 'postgres-dev',
+        labels: { environment: 'dev', 'app.kubernetes.io/part-of': 'app-data' },
+      },
+      spec: {
+        destination: { name: 'dev', namespace: 'postgres' },
+        source: { repoURL: 'x' },
+      },
+    } as ArgoApp;
+    const entity = {
+      apiVersion: 'backstage.io/v1alpha1',
+      kind: 'Resource',
+      metadata: {
+        name: 'postgres-dev',
+        annotations: {
+          'backstage.io/kubernetes-label-selector': 'cnpg.io/cluster=postgres',
+        },
+      },
+      spec: { type: 'database' },
+    };
+    expect(databaseTargetOf(pgApp, entity)).toMatchObject({
+      kind: 'database',
+      name: 'postgres',
+      cluster: 'dev',
+      namespace: 'postgres',
+      group: 'app-data',
+    });
   });
 });

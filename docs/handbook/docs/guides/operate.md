@@ -20,6 +20,19 @@ Links are shareable: the URL keeps the service, environment and tab
 | **Health** | Overall health, firing alerts, request rate, 5xx error ratio, p95 latency, each pod's readiness, restarts and last termination reason (e.g. `OOMKilled`), and Kubernetes events from the last 6 hours | Argo CD, Prometheus, Alertmanager, Loki |
 | **Logs** | Your service's log lines, filtered by level, time range and text. JSON fields are shown next to the message. | Loki |
 
+## Databases
+
+The shared PostgreSQL appears in Operate too (marked *database*). Its
+**Health** tab shows what matters to the apps using it: whether it's up,
+connections used against the limit, transactions per second, cache hit ratio,
+storage against the volume, deadlocks, the longest open transaction and
+replication lag, plus **one row per database**: find your app's database by
+name to see its size, connections and load. Grafana's **Data → PostgreSQL**
+dashboard has the history, and alerts fire when connections pass 80%, the
+volume fills past 80%, deadlocks happen or a transaction stays open for 5
+minutes. The platform team operates the database itself; ask through
+**Request help**.
+
 ## Investigate
 
 Each link opens already filtered to this service and environment:

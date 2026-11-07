@@ -27,8 +27,11 @@ import { GitHub, WorkflowRun } from './github';
 
 const SELECTOR = 'backstage.io/kubernetes-label-selector';
 const NAME_LABEL = 'app.kubernetes.io/name=';
+// Resources (e.g. databases) name their Argo CD application explicitly
+const ARGO_APP = 'argocd/app-name';
 
 type Target = {
+  kind: 'service' | 'database';
   argoApp: string;
   environment: string;
   group: string;
@@ -44,6 +47,7 @@ export function targetOf(app: ArgoApp): Target | undefined {
   const group = app.metadata.labels?.['app.kubernetes.io/part-of'];
   if (!name || !environment || !group) return undefined;
   return {
+    kind: 'service',
     argoApp: app.metadata.name,
     environment,
     group,
@@ -53,6 +57,33 @@ export function targetOf(app: ArgoApp): Target | undefined {
     hostname: app.spec.source?.helm?.parameters?.find(
       p => p.name === 'route.hostname',
     )?.value,
+  };
+}
+
+/**
+ * A database resource (catalog Resource, spec.type database) run by the Argo CD
+ * application its argocd/app-name annotation names. Its name is the
+ * CloudNativePG cluster (from the label selector cnpg.io/cluster=<name>).
+ */
+export function databaseTargetOf(
+  app: ArgoApp,
+  entity: Entity,
+): Target | undefined {
+  const environment = app.metadata.labels?.environment;
+  const group = app.metadata.labels?.['app.kubernetes.io/part-of'];
+  if (!environment || !group) return undefined;
+  const name =
+    entity.metadata.annotations?.[SELECTOR]?.match(
+      /^cnpg\.io\/cluster=(.+)$/,
+    )?.[1] ?? app.metadata.name.replace(new RegExp(`-${environment}$`), '');
+  return {
+    kind: 'database',
+    argoApp: app.metadata.name,
+    environment,
+    group,
+    name,
+    cluster: app.spec.destination.name ?? environment,
+    namespace: app.spec.destination.namespace ?? group,
   };
 }
 
@@ -79,9 +110,15 @@ export async function createRouter(options: {
   const router = Router();
   router.use(express.json());
 
+  // Everything Operate can show: services, and databases
   async function services(): Promise<Entity[]> {
     const { items } = await catalog.getEntities(
-      { filter: { kind: 'Component', 'spec.type': 'service' } },
+      {
+        filter: [
+          { kind: 'Component', 'spec.type': 'service' },
+          { kind: 'Resource', 'spec.type': 'database' },
+        ],
+      },
       { credentials: await auth.getOwnServiceCredentials() },
     );
     return items;
@@ -94,13 +131,42 @@ export async function createRouter(options: {
         e.metadata.annotations?.[SELECTOR] === `${NAME_LABEL}${t.name}`,
     );
 
-  async function resolve(argoApp: string) {
-    const app = await argo.getApp(argoApp).catch(() => undefined);
-    const t = app && targetOf(app);
-    if (!app || !t)
-      throw new NotFoundError(`No application environment ${argoApp}`);
-    return { app, t };
+  /** The catalog entity and target for an Argo CD application, if Operate shows it. */
+  function targetFor(app: ArgoApp, entities: Entity[]) {
+    const named = entities.find(
+      e => e.metadata.annotations?.[ARGO_APP] === app.metadata.name,
+    );
+    if (named?.kind === 'Resource') {
+      const t = databaseTargetOf(app, named);
+      return t ? { t, entity: named } : undefined;
+    }
+    const t = targetOf(app);
+    const entity = t && entityFor(t, entities);
+    return t && entity ? { t, entity } : undefined;
   }
+
+  async function resolve(argoApp: string) {
+    const [app, entities] = await Promise.all([
+      argo.getApp(argoApp).catch(() => undefined),
+      services(),
+    ]);
+    const found = app && targetFor(app, entities);
+    if (!app || !found)
+      throw new NotFoundError(`No application environment ${argoApp}`);
+    return { app, t: found.t, entity: found.entity as Entity | undefined };
+  }
+
+  /** A database's CloudNativePG Cluster (image, instances), via Argo CD. */
+  const cnpgCluster = (t: Target) =>
+    argo
+      .getResource(t.argoApp, {
+        namespace: t.namespace,
+        name: t.name,
+        group: 'postgresql.cnpg.io',
+        version: 'v1',
+        kind: 'Cluster',
+      })
+      .catch(() => undefined);
 
   function links(t: Target, entity?: Entity) {
     const v = new URLSearchParams({
@@ -108,6 +174,36 @@ export async function createRouter(options: {
       'var-namespace': t.namespace,
       'var-app': t.name,
     });
+    if (t.kind === 'database') {
+      const dv = new URLSearchParams({
+        'var-cluster': t.cluster,
+        'var-app': t.name,
+      });
+      return {
+        app: undefined,
+        argocd: argoPublic
+          ? `${argoPublic}/applications/argocd/${t.argoApp}`
+          : undefined,
+        serviceHealth: grafana ? `${grafana}/d/postgresql?${dv}` : undefined,
+        logs: grafana
+          ? `${grafana}/d/logs-explorer?${new URLSearchParams({
+              'var-cluster': t.cluster,
+              'var-namespace': t.namespace,
+            })}`
+          : undefined,
+        pods: grafana
+          ? `${grafana}/d/pod-troubleshooting?${new URLSearchParams({
+              'var-cluster': t.cluster,
+              'var-namespace': t.namespace,
+            })}`
+          : undefined,
+        catalog: entity
+          ? `/catalog/${entity.metadata.namespace ?? 'default'}/resource/${
+              entity.metadata.name
+            }`
+          : undefined,
+      };
+    }
     return {
       app: t.hostname ? `https://${t.hostname}` : undefined,
       argocd: argoPublic
@@ -124,6 +220,92 @@ export async function createRouter(options: {
     };
   }
 
+  /**
+   * The database numbers that matter to the apps using it: is it up, how close
+   * to its connection limit and volume, how busy, and per database (each app
+   * has its own) size, connections, load and deadlocks.
+   */
+  async function databaseHealth(t: Target) {
+    const s = `cluster=${q(t.cluster)}, app=${q(t.name)}`;
+    const user = `${s}, datname!~"template0|template1"`;
+    const pvc = `cluster=${q(t.cluster)}, namespace=${q(
+      t.namespace,
+    )}, persistentvolumeclaim=~${q(`${t.name}-[0-9]+`)}`;
+    const rate = (m: string) => `rate(cnpg_pg_stat_database_${m}{${user}}[5m])`;
+    const [
+      up,
+      connections,
+      maxConnections,
+      tps,
+      hit,
+      read,
+      deadlocks,
+      used,
+      capacity,
+      longestTx,
+      lag,
+      sizes,
+      conns,
+      dbTps,
+      dbDeadlocks,
+    ] = await Promise.all([
+      prom.scalar(
+        `min(up{${s}}) * (1 - max(cnpg_collector_last_collection_error{${s}}))`,
+      ),
+      prom.scalar(`sum(cnpg_backends_total{${s}})`),
+      prom.scalar(
+        `max(cnpg_pg_settings_setting{name="max_connections", ${s}})`,
+      ),
+      prom.scalar(`sum(${rate('xact_commit')} + ${rate('xact_rollback')})`),
+      prom.scalar(`sum(${rate('blks_hit')})`),
+      prom.scalar(`sum(${rate('blks_read')})`),
+      prom.scalar(
+        `sum(increase(cnpg_pg_stat_database_deadlocks{${user}}[1h]))`,
+      ),
+      prom.scalar(`sum(cnpg_pg_database_size_bytes{${s}})`),
+      prom.scalar(
+        `sum(kube_persistentvolumeclaim_resource_requests_storage_bytes{${pvc}})`,
+      ),
+      prom.scalar(`max(cnpg_backends_max_tx_duration_seconds{${s}})`),
+      prom.scalar(`max(cnpg_pg_replication_lag{${s}})`),
+      prom.query(`max by (datname) (cnpg_pg_database_size_bytes{${user}})`),
+      prom.query(`sum by (datname) (cnpg_backends_total{${user}})`),
+      prom.query(
+        `sum by (datname) (${rate('xact_commit')} + ${rate('xact_rollback')})`,
+      ),
+      prom.query(
+        `sum by (datname) (increase(cnpg_pg_stat_database_deadlocks{${user}}[1h]))`,
+      ),
+    ]);
+    const of = (
+      rows: { metric: Record<string, string>; value: number }[],
+      db: string,
+    ) => rows.find(r => r.metric.datname === db)?.value ?? null;
+    return {
+      up: up === null ? null : up === 1,
+      connections: { used: connections, max: maxConnections },
+      transactionsPerSecond: tps,
+      cacheHitRatio:
+        hit !== null && read !== null && hit + read > 0
+          ? hit / (hit + read)
+          : null,
+      deadlocksLastHour: deadlocks,
+      storage: { usedBytes: used, capacityBytes: capacity },
+      longestTransactionSeconds: longestTx,
+      replicationLagSeconds: lag,
+      databases: sizes
+        .map(r => r.metric.datname)
+        .sort()
+        .map(db => ({
+          name: db,
+          sizeBytes: of(sizes, db),
+          connections: of(conns, db) ?? 0,
+          transactionsPerSecond: of(dbTps, db),
+          deadlocksLastHour: of(dbDeadlocks, db),
+        })),
+    };
+  }
+
   router.get('/applications', async (req, res) => {
     await httpAuth.credentials(req, { allow: ['user'] });
     const [apps, entities] = await Promise.all([
@@ -132,9 +314,9 @@ export async function createRouter(options: {
     ]);
     const byEntity = new Map<string, any>();
     for (const app of apps) {
-      const t = targetOf(app);
-      const entity = t && entityFor(t, entities);
-      if (!t || !entity) continue;
+      const found = targetFor(app, entities);
+      if (!found) continue;
+      const { t, entity } = found;
       const ref = stringifyEntityRef(entity);
       const row = byEntity.get(ref) ?? {
         entityRef: ref,
@@ -142,6 +324,7 @@ export async function createRouter(options: {
         description: entity.metadata.description,
         owner: entity.spec?.owner,
         group: t.group,
+        kind: t.kind,
         environments: [],
       };
       row.environments.push({
@@ -163,10 +346,13 @@ export async function createRouter(options: {
 
   router.get('/applications/:app', async (req, res) => {
     await httpAuth.credentials(req, { allow: ['user'] });
-    const { app, t } = await resolve(req.params.app);
-    const entity = entityFor(t, await services());
+    const { app, t, entity } = await resolve(req.params.app);
     const sel = `cluster=${q(t.cluster)}, namespace=${q(t.namespace)}`;
-    const pods = `${sel}, pod=~${q(`${t.name}-[a-z0-9]+-[a-z0-9]+`)}`;
+    const pods = `${sel}, pod=~${q(
+      t.kind === 'database'
+        ? `${t.name}-[0-9]+`
+        : `${t.name}-[a-z0-9]+-[a-z0-9]+`,
+    )}`;
     const http = `${sel}, app=${q(t.name)}`;
     const repo = app.spec.source?.repoURL.replace(/\.git$/, '');
 
@@ -182,7 +368,11 @@ export async function createRouter(options: {
       alerts,
       events,
     ] = await Promise.all([
-      argo.getDeployment(t.argoApp, t.namespace, t.name).catch(() => undefined),
+      t.kind === 'database'
+        ? cnpgCluster(t)
+        : argo
+            .getDeployment(t.argoApp, t.namespace, t.name)
+            .catch(() => undefined),
       prom.query(
         `max by (pod) (kube_pod_status_ready{${pods}, condition="true"})`,
       ),
@@ -233,11 +423,29 @@ export async function createRouter(options: {
         .reason,
     }));
 
+    const database =
+      t.kind === 'database' ? await databaseHealth(t) : undefined;
+    // A CloudNativePG Cluster in place of a Deployment
+    const image =
+      t.kind === 'database'
+        ? deployment?.status?.image ?? deployment?.spec?.imageName
+        : deployment?.spec?.template?.spec?.containers?.[0]?.image;
+    const replicas =
+      t.kind === 'database'
+        ? deployment?.spec?.instances
+        : deployment?.spec?.replicas;
+    const readyReplicas =
+      (t.kind === 'database'
+        ? deployment?.status?.readyInstances
+        : deployment?.status?.readyReplicas) ?? 0;
+
     res.json({
+      kind: t.kind,
       entityRef: entity ? stringifyEntityRef(entity) : undefined,
       title: entity?.metadata.title ?? t.name,
       target: t,
       links: links(t, entity),
+      database,
       deployment: {
         sync: app.status?.sync?.status,
         revision: app.status?.sync?.revision,
@@ -245,9 +453,9 @@ export async function createRouter(options: {
           repo && app.status?.sync?.revision
             ? `${repo}/commit/${app.status.sync.revision}`
             : undefined,
-        image: deployment?.spec?.template?.spec?.containers?.[0]?.image,
-        replicas: deployment?.spec?.replicas,
-        readyReplicas: deployment?.status?.readyReplicas ?? 0,
+        image,
+        replicas,
+        readyReplicas,
         lastOperation: app.status?.operationState,
         conditions: app.status?.conditions ?? [],
         history: [...(app.status?.history ?? [])].reverse().map(h => ({
@@ -300,17 +508,20 @@ export async function createRouter(options: {
   //   bump) -> Argo CD sync -> rollout
   router.get('/applications/:app/pipeline', async (req, res) => {
     await httpAuth.credentials(req, { allow: ['user'] });
-    const { app, t } = await resolve(req.params.app);
-    const entity = entityFor(t, await services());
+    const { app, t, entity } = await resolve(req.params.app);
     const slug = entity?.metadata.annotations?.['github.com/project-slug'];
     const platformSlug = app.spec.source?.repoURL
       .replace(/^https:\/\/github\.com\//, '')
       .replace(/\.git$/, '');
-    const deployment = await argo
-      .getDeployment(t.argoApp, t.namespace, t.name)
-      .catch(() => undefined);
-    const image: string | undefined =
-      deployment?.spec?.template?.spec?.containers?.[0]?.image;
+    const isDb = t.kind === 'database';
+    const deployment = isDb
+      ? await cnpgCluster(t)
+      : await argo
+          .getDeployment(t.argoApp, t.namespace, t.name)
+          .catch(() => undefined);
+    const image: string | undefined = isDb
+      ? deployment?.status?.image ?? deployment?.spec?.imageName
+      : deployment?.spec?.template?.spec?.containers?.[0]?.image;
     const deployedSha = image?.match(/:sha-([0-9a-f]{40})$/)?.[1];
 
     // Services built by their own CI publish sha-<commit> images; others
@@ -357,8 +568,12 @@ export async function createRouter(options: {
     const short = (sha?: string) => sha?.slice(0, 7);
     const op = app.status?.operationState;
     const health = app.status?.health?.status;
-    const ready = deployment?.status?.readyReplicas ?? 0;
-    const desired = deployment?.spec?.replicas ?? 0;
+    const ready =
+      (isDb
+        ? deployment?.status?.readyInstances
+        : deployment?.status?.readyReplicas) ?? 0;
+    const desired =
+      (isDb ? deployment?.spec?.instances : deployment?.spec?.replicas) ?? 0;
     const ciState = (r?: WorkflowRun): State => {
       if (!r) return 'skipped';
       if (r.status !== 'completed') return 'running';
@@ -398,9 +613,17 @@ export async function createRouter(options: {
               url: latest?.url,
             },
           )
-        : stage('ci', 'CI', 'skipped', "Image not built by this service's CI", {
-            detail: image,
-          }),
+        : stage(
+            'ci',
+            'CI',
+            'skipped',
+            isDb
+              ? 'Database image (no CI)'
+              : "Image not built by this service's CI",
+            {
+              detail: image,
+            },
+          ),
       stage(
         'image',
         'Image',
@@ -482,12 +705,15 @@ export async function createRouter(options: {
       throw new InputError('bad level');
     const since = Math.min(Number(req.query.since ?? 3600), 7 * 24 * 3600);
     const text = String(req.query.q ?? '');
-    let logql = `{cluster=${q(t.cluster)}, namespace=${q(t.namespace)}, app=${q(
-      t.name,
-    )}`;
+    // Services by app label; database instances (<cluster>-1, -2, ...) by pod
+    const who =
+      t.kind === 'database'
+        ? `pod=~${q(`${t.name}-[0-9]+`)}`
+        : `app=${q(t.name)}`;
+    let logql = `{cluster=${q(t.cluster)}, namespace=${q(t.namespace)}, ${who}`;
     const levels: Record<string, string> = {
       all: '}',
-      warn: ', level=~"warn|error"}',
+      warn: ', level=~"warn|warning|error|fatal|panic"}',
     };
     logql += levels[level] ?? `, level=${q(level)}}`;
     if (text)
@@ -506,11 +732,13 @@ export async function createRouter(options: {
 
   router.post('/applications/:app/restart', async (req, res) => {
     const credentials = await httpAuth.credentials(req, { allow: ['user'] });
-    const { t } = await resolve(req.params.app);
+    const { t, entity } = await resolve(req.params.app);
+    if (t.kind !== 'service' || !entity) {
+      throw new InputError(
+        'Only services can be restarted here; databases are operated by the platform team (Request help).',
+      );
+    }
     // Only the service's owners (or the platform team): see the permission policy
-    const entity = entityFor(t, await services());
-    if (!entity)
-      throw new NotFoundError(`${t.argoApp} isn't a catalog service`);
     const [decision] = await permissions.authorize(
       [
         {

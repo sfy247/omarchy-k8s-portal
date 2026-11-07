@@ -55,6 +55,7 @@ import {
   useOperateApi,
 } from './api';
 import { CiRuns, DeliveryPipeline, DeployHistory } from './Pipeline';
+import { DatabaseHealth } from './DatabaseHealth';
 import { usePermission } from '@backstage/plugin-permission-react';
 import { operateRestartPermission } from './permissions';
 
@@ -105,7 +106,8 @@ function ApplicationsTable({
       field: 'title',
       render: a => (
         <>
-          <b>{a.title}</b>
+          <b>{a.title}</b>{' '}
+          {a.kind === 'database' && <Chip size="small" label="database" />}
           <Typography variant="caption" display="block">
             {a.description}
           </Typography>
@@ -297,32 +299,42 @@ function Health({ d }: { d: AppDetail }) {
           ))}
         </Grid>
       )}
-      <Grid item xs={4}>
-        <Stat
-          label="Requests / s (5m)"
-          value={
-            s.requestsPerSecond === null ? '–' : s.requestsPerSecond.toFixed(2)
-          }
-        />
-      </Grid>
-      <Grid item xs={4}>
-        <Stat
-          label="5xx errors"
-          value={errPct === null ? '–' : `${errPct.toFixed(1)}%`}
-          bad={(errPct ?? 0) > 5}
-        />
-      </Grid>
-      <Grid item xs={4}>
-        <Stat
-          label="p95 latency"
-          value={
-            s.p95Seconds === null
-              ? '–'
-              : `${(s.p95Seconds * 1000).toFixed(0)} ms`
-          }
-          bad={(s.p95Seconds ?? 0) > 1}
-        />
-      </Grid>
+      {d.kind === 'database' && d.database ? (
+        <Grid item xs={12}>
+          <DatabaseHealth db={d.database} />
+        </Grid>
+      ) : (
+        <>
+          <Grid item xs={4}>
+            <Stat
+              label="Requests / s (5m)"
+              value={
+                s.requestsPerSecond === null
+                  ? '–'
+                  : s.requestsPerSecond.toFixed(2)
+              }
+            />
+          </Grid>
+          <Grid item xs={4}>
+            <Stat
+              label="5xx errors"
+              value={errPct === null ? '–' : `${errPct.toFixed(1)}%`}
+              bad={(errPct ?? 0) > 5}
+            />
+          </Grid>
+          <Grid item xs={4}>
+            <Stat
+              label="p95 latency"
+              value={
+                s.p95Seconds === null
+                  ? '–'
+                  : `${(s.p95Seconds * 1000).toFixed(0)} ms`
+              }
+              bad={(s.p95Seconds ?? 0) > 1}
+            />
+          </Grid>
+        </>
+      )}
       <Grid item xs={12}>
         <Table
           title="Pods"
@@ -548,9 +560,13 @@ function Logs({ d }: { d: AppDetail }) {
 function Investigate({ d }: { d: AppDetail }) {
   const items: [string, string | undefined, string][] = [
     [
-      'Service Health dashboard',
+      d.kind === 'database'
+        ? 'PostgreSQL dashboard'
+        : 'Service Health dashboard',
       d.links.serviceHealth,
-      'Golden signals, error logs and events side by side',
+      d.kind === 'database'
+        ? 'Connections, load, size per database, and its logs'
+        : 'Golden signals, error logs and events side by side',
     ],
     [
       'Pod troubleshooting',
@@ -602,7 +618,8 @@ function RequestAction({
     permission: operateRestartPermission,
     resourceRef: d.entityRef,
   });
-  const canChange = Boolean(d.entityRef) && isOwner;
+  const isDb = d.kind === 'database';
+  const canChange = Boolean(d.entityRef) && isOwner && !isDb;
   const form = (template: string, extra: object = {}) =>
     `/create/templates/default/${template}?${new URLSearchParams({
       formData: JSON.stringify({
@@ -660,15 +677,24 @@ function RequestAction({
         Changes go through a pull request to the platform repo, reviewed and
         applied by Argo CD. A restart is immediate and recorded in Argo CD.
       </Typography>
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={() => setConfirm(true)}
-        disabled={!canChange}
-      >
-        Restart now
-      </Button>
-      {!checking && !canChange && d.entityRef && (
+      {isDb && (
+        <Alert severity="info">
+          The platform team runs this database. To give your service a database,
+          use <b>Add a database</b> on your service; for anything else, request
+          help.
+        </Alert>
+      )}
+      {!isDb && (
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => setConfirm(true)}
+          disabled={!canChange}
+        >
+          Restart now
+        </Button>
+      )}
+      {!isDb && !checking && !canChange && d.entityRef && (
         <Box mt={1}>
           <Alert severity="info">
             Only the team that owns this service (or the platform team) can
@@ -684,17 +710,19 @@ function RequestAction({
         </Box>
       )}
       <List dense>
-        {actions.map(([title, url, hint, ownersOnly]) => (
-          <ListItem
-            key={title}
-            button
-            component="a"
-            href={url}
-            disabled={!d.entityRef || (ownersOnly && !canChange)}
-          >
-            <ListItemText primary={title} secondary={hint} />
-          </ListItem>
-        ))}
+        {actions
+          .filter(([, , , ownersOnly]) => !isDb || !ownersOnly)
+          .map(([title, url, hint, ownersOnly]) => (
+            <ListItem
+              key={title}
+              button
+              component="a"
+              href={url}
+              disabled={!d.entityRef || (ownersOnly && !canChange)}
+            >
+              <ListItemText primary={title} secondary={hint} />
+            </ListItem>
+          ))}
       </List>
       <Dialog open={confirm} onClose={() => setConfirm(false)}>
         <DialogTitle>

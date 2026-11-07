@@ -19,9 +19,29 @@ export type AppSummary = {
   description?: string;
   owner?: string;
   group: string;
+  kind: 'service' | 'database';
   environments: EnvSummary[];
 };
+export type DatabaseHealth = {
+  up: boolean | null;
+  connections: { used: number | null; max: number | null };
+  transactionsPerSecond: number | null;
+  cacheHitRatio: number | null;
+  deadlocksLastHour: number | null;
+  storage: { usedBytes: number | null; capacityBytes: number | null };
+  longestTransactionSeconds: number | null;
+  replicationLagSeconds: number | null;
+  databases: {
+    name: string;
+    sizeBytes: number | null;
+    connections: number;
+    transactionsPerSecond: number | null;
+    deadlocksLastHour: number | null;
+  }[];
+};
 export type AppDetail = {
+  kind: 'service' | 'database';
+  database?: DatabaseHealth;
   entityRef?: string;
   title: string;
   target: {
