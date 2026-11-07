@@ -17,6 +17,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import YAML from 'yaml';
 import { createAuthorizeAction } from './authorize';
+import { createCiCredentialsAction, createHeadCommitAction } from './github';
 
 export default createBackendModule({
   pluginId: 'scaffolder',
@@ -31,6 +32,8 @@ export default createBackendModule({
       async init({ scaffolder, reader, config }) {
         scaffolder.addActions(
           createAuthorizeAction(config),
+          createCiCredentialsAction(config),
+          createHeadCommitAction(config),
           createTemplateAction({
             id: 'platform:values:set',
             description:

@@ -5,11 +5,13 @@
 1. Open a pull request in your service repo. CI builds and tests it.
 2. Merge to `main`. CI builds the image, scans it, and publishes
    `ghcr.io/<owner>/<repo>:sha-<commit>`.
-3. Within about two minutes, **Image Updater** commits the new tag to your
-   service's `values-dev.yaml` in the platform repo, and Argo CD rolls it out.
+3. CI's last job, **deploy-dev**, commits the new tag to your service's
+   `values-dev.yaml` in the platform repo. Argo CD notices the commit (within
+   about three minutes) and rolls it out.
 
-You'll see a commit by `argocd-image-updater` in the platform repo's history
-for each rollout.
+Each rollout is a commit `deploy: <service> sha-<commit>` by `gitops[bot]` in
+the platform repo, linking back to the CI run that made it. To roll back,
+revert that commit.
 
 ### Watch it in the portal
 

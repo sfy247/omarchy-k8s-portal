@@ -1,5 +1,6 @@
-# Build, scan and publish the portal image to GHCR.
-# Deploys use the immutable sha-<commit> tag; `main` always points at the latest.
+# Build, scan and publish the portal image to GHCR, then deploy it by Git:
+# the sha-<commit> tag is committed to the platform repo and Argo CD rolls it
+# out. `main` always points at the latest image.
 name: build-image
 
 on:
@@ -88,3 +89,22 @@ jobs:
       - name: Push
         if: github.event_name != 'pull_request'
         run: docker push --all-tags "$IMAGE"
+
+  # The portal deploys itself like every service: one commit to the platform repo
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-portal
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/gitops-update
+        with:
+          repository: ${{ vars.GITOPS_REPOSITORY }}
+          file: charts/developer-portal/values-image.yaml
+          key: .backstage.backstage.image.tag
+          value: sha-${{ github.sha }}
+          app-id: ${{ vars.GITOPS_APP_ID }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}

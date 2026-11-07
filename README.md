@@ -16,7 +16,7 @@ Operate: select application + environment ─> deployments, health, logs
                        │ merge
                        ▼
 Service CI ──> ghcr.io/<owner>/<repo>:sha-<commit>
-Argo CD Image Updater ──> commits the new tag ──> Argo CD deploys to dev
+          └──> commits the new tag to the platform repo (GitOps GitHub App) ──> Argo CD deploys to dev
 ```
 
 ## What's here

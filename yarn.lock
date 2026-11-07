@@ -13251,6 +13251,7 @@ __metadata:
     better-sqlite3: "npm:^12.0.0"
     express: "npm:^4.22.3"
     express-promise-router: "npm:^4.1.1"
+    libsodium-wrappers: "npm:^0.8.4"
     node-gyp: "npm:^13.1.0"
     pg: "npm:^8.11.3"
     yaml: "npm:^2.9.1"
@@ -21321,7 +21322,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"libsodium-wrappers@npm:^0.8.0":
+"libsodium-wrappers@npm:^0.8.0, libsodium-wrappers@npm:^0.8.4":
   version: 0.8.4
   resolution: "libsodium-wrappers@npm:0.8.4"
   dependencies:

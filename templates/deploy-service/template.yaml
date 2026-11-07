@@ -83,17 +83,12 @@ spec:
           database: ${{ parameters.database }}
           image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
 
-    - id: cd
-      name: Generate CI/CD (image roll-out)
-      action: fetch:template
+    # Its CI tags images sha-<commit>: deploy the latest commit's image
+    - id: head
+      name: Find the latest image
+      action: platform:head-commit
       input:
-        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/platform
-        targetPath: ./platform
-        values:
-          name: ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}
-          group: ${{ steps['service'].output.entity.spec.system }}
-          environment: ${{ parameters.environment }}
-          image: ghcr.io/${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] | lower }}
+        slug: ${{ steps['service'].output.entity.metadata.annotations['github.com/project-slug'] }}
 
     - id: deploy
       name: Deploy application
@@ -105,6 +100,7 @@ spec:
           name: ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}
           group: ${{ steps['service'].output.entity.spec.system }}
           environment: ${{ parameters.environment }}
+          imageTag: sha-${{ steps['head'].output.sha }}
 
     - id: platform-pr
       name: Open the deployment pull request
@@ -118,7 +114,6 @@ spec:
           Requested in the developer portal for `${{ parameters.service }}`.
 
           - `apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/`: values for the web-service chart
-          - `environments/${{ parameters.environment }}/${{ steps['service'].output.entity.spec.system }}/image-updates/`: keeps ${{ parameters.environment }} on the newest image
 
           After merging, Argo CD deploys it to
           `https://${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}.${{ parameters.environment }}.<lab domain>`.

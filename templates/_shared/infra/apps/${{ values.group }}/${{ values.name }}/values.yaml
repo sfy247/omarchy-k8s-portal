@@ -4,7 +4,7 @@ nameOverride: ${{ values.name }}
 
 image:
   repository: ${{ values.image }}
-  tag: bootstrap   # each environment pins its tag in values-<env>.yaml
+  tag: bootstrap   # each environment's values-<env>.yaml sets the running tag
 
 containerPort: 8080
 

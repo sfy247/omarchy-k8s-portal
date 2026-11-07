@@ -18,8 +18,8 @@ ${{ values.description }}
 
 1. Push to `main`. CI builds, tests, scans the image, and pushes
    `ghcr.io/<owner>/<repo>:sha-<commit>`.
-2. Argo CD Image Updater sees the new tag and commits it to this service's
-   `values-dev.yaml` in the platform repo.
+2. CI's `deploy-dev` job commits the new tag to this service's
+   `values-dev.yaml` in the platform repo (as the GitOps GitHub App).
 3. Argo CD deploys it to the dev cluster.
 
 ## Observability

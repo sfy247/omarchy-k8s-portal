@@ -1,0 +1,85 @@
+# Deploy by Git: set one key in a values file in the platform (GitOps) repo
+# and commit it; Argo CD applies the commit. Used by the reusable service CI
+# and the portal's own build after an image is published.
+#
+# Writes as the GitOps GitHub App, with a short-lived token scoped to the
+# platform repo only. A missing file is skipped (service not deployed yet).
+name: gitops-update
+description: Commit a new value (e.g. an image tag) to the platform repo
+inputs:
+  repository:
+    description: Platform repo, owner/name
+    required: true
+  file:
+    description: Values file in that repo, e.g. apps/services/orders/values-dev.yaml
+    required: true
+  key:
+    description: yq path of the value, e.g. .image.tag
+    required: true
+  value:
+    description: The new value
+    required: true
+  app-id:
+    description: GitOps GitHub App ID
+    required: true
+  private-key:
+    description: GitOps GitHub App private key
+    required: true
+outputs:
+  commit:
+    description: The platform commit (empty when nothing changed)
+    value: ${{ steps.commit.outputs.sha }}
+runs:
+  using: composite
+  steps:
+    - id: token
+      uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+      with:
+        app-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.private-key }}
+        owner: ${{ github.repository_owner }}
+        # Only the platform repo, whatever else the app is installed on
+        repositories: ${{ inputs.repository }}
+
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        repository: ${{ github.repository_owner }}/${{ inputs.repository }}
+        token: ${{ steps.token.outputs.token }}
+        path: .gitops
+
+    - id: commit
+      shell: bash
+      working-directory: .gitops
+      env:
+        FILE: ${{ inputs.file }}
+        KEY: ${{ inputs.key }}
+        VALUE: ${{ inputs.value }}
+        RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        set -euo pipefail
+        git config user.name "gitops[bot]"
+        git config user.email "gitops[bot]@users.noreply.github.com"
+        for attempt in 1 2 3 4 5; do
+          if [ ! -f "$FILE" ]; then
+            echo "::notice::$FILE isn't in the platform repo (not deployed yet): nothing to update"
+            exit 0
+          fi
+          yq -i "$KEY = strenv(VALUE)" "$FILE"
+          if git diff --quiet; then
+            echo "$FILE already has $KEY = $VALUE"
+            exit 0
+          fi
+          git commit -qam "deploy: ${{ github.event.repository.name }} $VALUE" \
+            -m "$FILE: $KEY = $VALUE" -m "From $RUN"
+          if git push -q origin HEAD:main; then
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deployed $VALUE ($FILE). Argo CD applies it within a few minutes."
+            exit 0
+          fi
+          # Someone else pushed first: start again from the new main
+          git reset -q --hard origin/main
+          git pull -q --rebase origin main
+          sleep $((attempt * 2))
+        done
+        echo "::error::Couldn't push to the platform repo after 5 attempts"
+        exit 1

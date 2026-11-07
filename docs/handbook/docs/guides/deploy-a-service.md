@@ -23,8 +23,7 @@ The portal opens one pull request in the platform repo:
 | File | What it is |
 |---|---|
 | `apps/<group>/<name>/values.yaml` | Settings every environment shares: image, port, resources, metrics, database (first deployment only) |
-| `apps/<group>/<name>/values-<env>.yaml` | That environment's overrides; the image tag is kept current automatically |
-| `environments/<env>/<group>/image-updates/<name>.yaml` | Rolls out each new image CI publishes |
+| `apps/<group>/<name>/values-<env>.yaml` | That environment's overrides, starting with the image of the service's latest commit; CI updates the tag on every release |
 
 Once merged, Argo CD deploys it to `https://<name>.<env>.kindell247` within a
 few minutes.

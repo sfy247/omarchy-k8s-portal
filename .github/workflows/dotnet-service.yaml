@@ -1,9 +1,10 @@
 # Reusable CI for services created from the dotnet-service template.
 # Fix or upgrade it here once and every service picks it up on its next run.
 #
-# Build -> test -> image -> scan -> push ghcr.io/<owner>/<repo>:sha-<commit>.
-# No secrets: GHCR uses the caller's built-in GITHUB_TOKEN, and Argo CD Image
-# Updater (in the cluster) rolls new tags out to dev.
+# Build -> test -> image -> scan -> push ghcr.io/<owner>/<repo>:sha-<commit>
+# -> deploy-dev: commit the new tag to the platform repo; Argo CD rolls it out.
+# GHCR uses the caller's built-in GITHUB_TOKEN; the deploy commit uses the
+# GitOps GitHub App (variable GITOPS_APP_ID, secret GITOPS_APP_PRIVATE_KEY).
 name: dotnet-service
 
 on:
@@ -16,6 +17,20 @@ on:
       dotnet-version:
         type: string
         default: "10.0.x"
+      gitops-repository:
+        description: Platform repo name (same owner); empty = don't deploy
+        type: string
+        default: ""
+      gitops-values-file:
+        description: The service's dev values in the platform repo
+        type: string
+        default: ""
+      gitops-app-id:
+        type: string
+        default: ""
+    secrets:
+      GITOPS_APP_PRIVATE_KEY:
+        required: false
 
 permissions:
   contents: read
@@ -79,3 +94,25 @@ jobs:
       - name: Push
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker push "${{ steps.meta.outputs.tags }}"
+
+  # Deploy to dev by Git: the new tag goes into the platform repo, Argo CD
+  # rolls it out. Only for main, and only once the image is published.
+  deploy-dev:
+    needs: image
+    if: >-
+      github.event_name == 'push' && github.ref == 'refs/heads/main'
+      && inputs.gitops-repository != '' && inputs.gitops-values-file != ''
+    runs-on: ubuntu-latest
+    # One deploy at a time per service, in push order
+    concurrency:
+      group: deploy-dev-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - uses: sfy247/omarchy-k8s-portal/.github/actions/gitops-update@main
+        with:
+          repository: ${{ inputs.gitops-repository }}
+          file: ${{ inputs.gitops-values-file }}
+          key: .image.tag
+          value: sha-${{ github.sha }}
+          app-id: ${{ inputs.gitops-app-id }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}

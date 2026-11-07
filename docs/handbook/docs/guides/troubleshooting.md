@@ -12,7 +12,7 @@ Start with **Grafana → Applications → Service Health** for your service (see
 | `https://<name>.dev…` gives 404 | The platform PR isn't merged, or the app isn't synced yet | Merge the PR; check the app in Argo CD |
 | Browser certificate warning | The lab CA isn't trusted by this browser | Restart Chromium; Firefox needs the CA added |
 | Database connection refused | `database.enabled` isn't set, or the database wasn't created | See [Add a database](add-a-database.md) |
-| New version isn't rolling out | The image tag hasn't been picked up yet | Wait two minutes; look for an `argocd-image-updater` commit in the platform repo |
+| New version isn't rolling out | CI's deploy-dev job didn't run or failed, or Argo CD hasn't synced yet | Check the run on **CI/CD** (deploy-dev job); look for a `deploy: <service>` commit in the platform repo; Argo CD picks it up within about three minutes |
 
 Still stuck? Ask in the platform team's channel with your service name and
 what you tried.

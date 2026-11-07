@@ -95,6 +95,13 @@ spec:
         repoVisibility: public
         deleteBranchOnMerge: true
 
+    # CD credentials before the first push, so the first CI run can deploy
+    - id: ci-credentials
+      name: Generate CI/CD (deploy credentials)
+      action: platform:ci-credentials
+      input:
+        repoUrl: ${{ parameters.repoUrl }}
+
     - id: code
       name: Generate application code
       action: fetch:template
@@ -121,20 +128,9 @@ spec:
         values:
           language: dotnet
           projectPath: src/${{ parameters.name }}
-          workflowsRepo: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/portal-workflows'] }}
-
-    - id: cd
-      name: Generate CI/CD (image roll-out to dev)
-      if: ${{ parameters.deploy }}
-      action: fetch:template
-      input:
-        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/cicd/platform
-        targetPath: ./platform
-        values:
           name: ${{ parameters.name }}
           group: ${{ parameters.group }}
-          environment: dev
-          image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
+          workflowsRepo: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/portal-workflows'] }}
 
     # Pushing starts the first CI run, which publishes the first image
     - id: publish
@@ -172,6 +168,8 @@ spec:
           name: ${{ parameters.name }}
           group: ${{ parameters.group }}
           environment: dev
+          # CI publishes sha-<commit> for the commit just pushed
+          imageTag: sha-${{ steps['publish'].output.commitHash }}
 
     - id: platform-pr
       name: Open the platform pull request (infrastructure + deployment)
@@ -189,7 +187,6 @@ spec:
           |---|---|
           | Provision infrastructure | `apps/${{ parameters.group }}/${{ parameters.name }}/values.yaml` |
           | Deploy application | `apps/${{ parameters.group }}/${{ parameters.name }}/values-dev.yaml` |
-          | CI/CD (roll-out) | `environments/dev/${{ parameters.group }}/image-updates/${{ parameters.name }}.yaml` |
 
           After merging, Argo CD deploys it to `https://${{ parameters.name }}.dev.<lab domain>`.
           Database requested: ${{ parameters.database }}. If true, run

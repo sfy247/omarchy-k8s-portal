@@ -9,7 +9,7 @@ the first three; the portal does the rest.
 | 2 | Select approved template | You | Pick a template, e.g. **.NET web service**. Only templates reviewed by the platform team are listed. |
 | 3 | Configure application | You | Fill in the form (below) |
 | 4 | Create GitHub repo | Portal | An empty repo under the owner you chose, with your application code |
-| 5 | Generate CI/CD | Portal | A pipeline (build, test, scan, publish the image) and a rule that rolls each new image out |
+| 5 | Generate CI/CD | Portal | A pipeline that builds, tests, scans and publishes the image, then deploys it by committing its tag to the platform repo |
 | 6 | Provision infrastructure | Portal | Namespace, HTTPS route, network policy, resources, metrics and database access |
 | 7 | Deploy application | Portal + Argo CD | Deployment to dev, applied when the platform pull request is merged |
 
@@ -30,13 +30,12 @@ the first three; the portal does the rest.
 After **Create**, the portal shows each stage as it runs, then links to the
 GitHub repo, the platform pull request and the service's catalog page.
 
-Stages 5 to 7 change the platform repo, so they arrive as **one pull request**:
+Stages 6 and 7 change the platform repo, so they arrive as **one pull request**:
 
 | Stage | File in `omarchy-k8s-platform` |
 |---|---|
 | Provision infrastructure | `apps/<group>/<name>/values.yaml` |
-| Deploy application | `apps/<group>/<name>/values-dev.yaml` |
-| CI/CD (roll-out) | `environments/dev/<group>/image-updates/<name>.yaml` |
+| Deploy application | `apps/<group>/<name>/values-dev.yaml` (CI keeps its image tag current) |
 
 ## Merge the pull request
 

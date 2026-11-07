@@ -1,4 +1,5 @@
-# ${{ values.environment }} overrides. image.tag is maintained by Argo CD Image Updater
-# (environments/${{ values.environment }}/${{ values.group }}/image-updates/${{ values.name }}.yaml).
+# ${{ values.environment }} overrides. image.tag is the image running here: the
+# service's CI commits each new sha-<commit> tag to this file after publishing
+# it, and Argo CD rolls it out.
 image:
-  tag: bootstrap
+  tag: ${{ values.imageTag }}
