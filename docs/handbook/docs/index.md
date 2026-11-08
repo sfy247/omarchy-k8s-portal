@@ -51,6 +51,7 @@ For the platform team: how it's built and how to run it.
 | 10 | [Observability platform](10%20Observability%20Platform.md) | Prometheus, Loki, Grafana, Alloy; mTLS ingest; dashboards and alerts as code |
 | 11 | [CI/CD and delivery](11%20CI-CD%20and%20Delivery.md) | Shared pipelines, the contract check, deploy by Git, rollback, credentials |
 | 12 | [Golden paths and templates](12%20Golden%20Paths%20and%20Templates.md) | How templates are built, the shared blocks, adding a language |
+| 13 | [Databases](13%20Databases.md) | Postgres per environment, certificate logins, self-service databases, operations |
 
 ## Repositories
 

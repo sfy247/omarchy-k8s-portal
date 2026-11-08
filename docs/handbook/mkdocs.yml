@@ -32,6 +32,7 @@ nav:
       - Observability platform: 10 Observability Platform.md
       - CI/CD and delivery: 11 CI-CD and Delivery.md
       - Golden paths and templates: 12 Golden Paths and Templates.md
+      - Databases: 13 Databases.md
 exclude_docs: |
   _diagram-src/
   .obsidian/

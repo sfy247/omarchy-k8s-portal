@@ -1,5 +1,7 @@
 # Add a database
 
+How it works underneath: [Databases](../13%20Databases.md).
+
 Each environment has a shared PostgreSQL server. Your service gets **its own
 database and its own login**; it can't see any other service's data. There are
 **no passwords**: your service logs in with a **client certificate** the

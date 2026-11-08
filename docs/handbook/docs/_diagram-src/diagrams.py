@@ -475,3 +475,66 @@ def golden_paths():
     d.arrow([(390, 182), (408, 182)], muted=True, head=False)
     d.arrow([(390, 200), (740, 230), (805, 212)], muted=True, head=False, dashed=True)
     return d
+
+
+# ---------------------------------------------------------------- 13 databases: trust
+@reg("db-trust", "One private CA, used only by Postgres. It signs the server's certificate and one client certificate per service. Each side verifies the other against the same CA, and Postgres also checks that the certificate's name is the login's name.")
+def db_trust():
+    d = D("dt", 900, 300, "The Postgres CA in cert-manager signs the Postgres server certificate and each service's client certificate; both sides verify each other")
+    d.box(330, 20, 240, 60, "Postgres CA", "ClusterIssuer postgres · cert-manager", accent=True)
+    d.group(20, 120, 360, 164, "Your service's namespace")
+    d.box(40, 152, 150, 56, "client certificate", "CN = services_orders")
+    d.box(210, 152, 150, 56, "your pod", "/etc/postgres-client")
+    d.box(40, 222, 320, 44, "Secret <name>-db-cert", "tls.crt · tls.key · ca.crt")
+    d.group(520, 120, 360, 164, "postgres namespace")
+    d.box(540, 152, 150, 56, "Postgres", "hostssl … cert", accent=True)
+    d.box(710, 152, 150, 56, "server certificate", "postgres-rw…svc")
+    d.box(540, 222, 320, 44, "role + database services_orders", "DatabaseRole · Database (retain)")
+    d.arrow([(380, 80), (380, 100), (115, 100), (115, 150)], "signs", (250, 94))
+    d.arrow([(570, 80), (570, 100), (785, 100), (785, 150)], "signs", (680, 94))
+    d.arrow([(190, 180), (208, 180)])
+    d.arrow([(360, 170), (538, 170)], "TLS 1.3 · client cert", (449, 162), accent=True)
+    d.arrow([(708, 180), (692, 180)], muted=True)
+    d.arrow([(538, 192), (362, 192)], "server cert · verify-full", (449, 212), accent=True)
+    return d
+
+
+# ---------------------------------------------------------------- 13 databases: lifecycle
+@reg("db-lifecycle", "From request to connected, with nobody in the loop. Merging the pull request is the only human step; Argo CD, cert-manager and CloudNativePG do the rest in a few minutes.")
+def db_lifecycle():
+    d = D("dlc", 980, 250, "Add a database opens a PR; on merge Argo CD applies the chart, cert-manager issues the certificate, CloudNativePG creates the role and database, the pod restarts and connects")
+    d.box(20, 40, 140, 56, "Add a database", "Operate or Create")
+    d.box(200, 40, 140, 56, "pull request", "database.enabled")
+    d.box(380, 40, 140, 56, "Argo CD", "web-service chart", accent=True)
+    d.box(570, 10, 180, 50, "cert-manager", "issues the certificate")
+    d.box(570, 80, 180, 50, "CloudNativePG", "creates role + database")
+    d.box(800, 40, 160, 56, "your pod", "restarts · connects", accent=True)
+    d.arrow([(160, 68), (198, 68)])
+    d.arrow([(340, 68), (378, 68)], "merge", (359, 60), accent=True)
+    d.arrow([(520, 60), (545, 60), (545, 35), (568, 35)], "Certificate", (520, 24), anchor="start")
+    d.arrow([(520, 76), (545, 76), (545, 105), (568, 105)], "DatabaseRole · Database", (570, 146), anchor="start")
+    d.arrow([(750, 35), (775, 35), (775, 60), (798, 60)])
+    d.arrow([(750, 105), (775, 105), (775, 76), (798, 76)])
+    d.text(20, 170, "WHAT EACH PIECE IS", size=10.5, anchor="start", bold=True, halo=False)
+    d.box(20, 184, 220, 50, "Certificate", "your namespace · CN = role")
+    d.box(260, 184, 220, 50, "DatabaseRole", "login, certificate only")
+    d.box(500, 184, 220, 50, "Database", "owned by that role")
+    d.box(740, 184, 220, 50, "PG* settings", "env vars + mounted files")
+    return d
+
+
+# ---------------------------------------------------------------- 13 databases: login check
+@reg("db-login", "What happens on every connection. Any failed check ends it: no certificate, a certificate from another CA, a name that isn't the login, or no TLS.")
+def db_login():
+    d = D("dlg", 940, 210, "Connection checks: TLS, server certificate verified by the app, client certificate verified by Postgres, certificate name equals login, then the role's own database")
+    xs = [20, 205, 390, 575, 760]
+    steps = [("TLS required", "plaintext rejected"), ("app checks server", "CA + hostname"),
+             ("checks client", "Postgres CA signed"), ("name = login?", "CN services_orders"),
+             ("its own database", "owner of one database")]
+    for i, (x, (t, s)) in enumerate(zip(xs, steps)):
+        d.box(x, 60, 160, 60, t, s, accent=(i == 3))
+        d.step(x + 12, 52, i + 1)
+        if i:
+            d.arrow([(x - 25, 90), (x - 2, 90)], accent=True)
+    d.text(20, 160, "Fails: no TLS · fake server · no or foreign certificate · someone else's certificate · another service's database", size=11, anchor="start", halo=False)
+    return d
