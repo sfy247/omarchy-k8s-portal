@@ -58,6 +58,9 @@ See [Observe and troubleshoot](observability.md) for a worked example.
 | **Deploy to another environment** | The [Deploy a service](deploy-a-service.md) action |
 | **Request help** | An issue in the platform repo, with the service, environment and links filled in |
 
+These actions live here, not in **Create**: Create is only for starting
+something new (a service, or a service's first deployment).
+
 Restart and the pull-request actions are for the service's owning team and
 the platform team ([Who can do what](permissions.md)); anyone can request help.
 

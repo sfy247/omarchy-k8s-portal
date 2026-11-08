@@ -14,6 +14,25 @@ app:
     - sub-page:scaffolder/actions: false
     - sub-page:scaffolder/editor: false
     - sub-page:scaffolder/templating-extensions: false
+    # Create lists templates that start something new, including a service's
+    # first deployment. Day-2 templates (spec.type operation: scale, resources,
+    # database, help) aren't listed; Operate's Request action opens them,
+    # pre-filled for the service and environment
+    - sub-page:scaffolder/templates:
+        config:
+          templateFilter:
+            $not:
+              spec.type: operation
+          groups:
+            - title: Start a new service
+              filter:
+                spec.type: service
+            - title: Deploy a service you already have
+              filter:
+                spec.type: deployment
+            - title: For the platform team
+              filter:
+                spec.type: template
     # One look for everyone: the dark + gold theme (modules/theme)
     - theme:app/light: false
 
