@@ -1,28 +1,34 @@
 # Getting started
 
-Welcome. This platform takes you from an idea to a running, secured service
-without filing tickets or touching Kubernetes directly.
+This platform takes you from an idea to a running, secured, observed service
+without tickets and without touching Kubernetes directly. You work in the
+**portal** and in **your repository**; Git and automation do the rest.
+
+<figure style="margin:1.2em 0;display:block;width:100%;max-width:960px"><svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Create a service in the portal, push code, CI builds and deploys by Git, Argo CD rolls out, Operate and Grafana show health" style="display:block;width:100%;height:auto;max-width:960px;font-family:var(--font-interface, system-ui, sans-serif);color:var(--text-normal, var(--md-default-fg-color, #222))"><defs><marker id="lc-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor" fill-opacity="0.8"/></marker><marker id="lc-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)))"/></marker></defs><g><rect x="20" y="120" width="100" height="56" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="70.0" y="152.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">You</text></g><rect x="150" y="16" width="190" height="268" rx="9" fill="none" stroke="currentColor" stroke-opacity="0.35" stroke-dasharray="6 4"/><text x="162" y="33" font-size="10.5" font-weight="600" letter-spacing="0.06em" fill="currentColor" fill-opacity="0.65">PORTAL</text><g><rect x="170" y="46" width="150" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="245.0" y="68.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Create</text><text x="245.0" y="83.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">template · repo · PR</text></g><g><rect x="170" y="124" width="150" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="245.0" y="146.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Discover · Learn</text><text x="245.0" y="161.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">catalog · docs · CI/CD</text></g><g><rect x="170" y="202" width="150" height="50" rx="7" style="stroke:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));fill-opacity:0.10;stroke-width:2"/><text x="245.0" y="224.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Operate</text><text x="245.0" y="239.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">deploys · health · logs</text></g><g><rect x="390" y="46" width="160" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="470.0" y="68.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">service repo</text><text x="470.0" y="83.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">your code · Dockerfile</text></g><g><rect x="390" y="124" width="160" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="470.0" y="146.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">CI</text><text x="470.0" y="161.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">build · contract · scan</text></g><g><rect x="600" y="124" width="150" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="675.0" y="146.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">platform repo</text><text x="675.0" y="161.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">values per environment</text></g><g><rect x="800" y="46" width="140" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="870.0" y="68.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">GHCR</text><text x="870.0" y="83.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">sha-&lt;commit&gt; images</text></g><g><rect x="800" y="124" width="140" height="50" rx="7" style="stroke:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));fill-opacity:0.10;stroke-width:2"/><text x="870.0" y="146.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Argo CD</text><text x="870.0" y="161.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">syncs Git → cluster</text></g><g><rect x="800" y="202" width="140" height="50" rx="7" style="stroke:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));fill-opacity:0.10;stroke-width:2"/><text x="870.0" y="224.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">dev cluster</text><text x="870.0" y="239.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">your service</text></g><g><rect x="600" y="202" width="150" height="50" rx="7" stroke="currentColor" stroke-opacity="0.55" fill="currentColor" fill-opacity="0.05"/><text x="675.0" y="224.5" text-anchor="middle" font-size="13" font-weight="600" fill="currentColor">Grafana</text><text x="675.0" y="239.5" text-anchor="middle" font-size="11" fill="currentColor" fill-opacity="0.72">metrics · logs · alerts</text></g><polyline points="120,136 135,136 135,71 168,71" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><polyline points="120,160 135,160 135,227 168,227" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><polyline points="320,71 388,71" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><text x="354" y="63" text-anchor="middle" font-size="11" fill-opacity="0.75" style="fill:currentColor;paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">creates</text><polyline points="470,96 470,122" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><text x="490" y="113" text-anchor="start" font-size="11" fill-opacity="0.75" style="fill:currentColor;paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">push</text><polyline points="550,136 575,136 575,60 798,60" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><text x="690" y="52" text-anchor="middle" font-size="11" fill-opacity="0.75" style="fill:currentColor;paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">image</text><polyline points="550,156 598,156" fill="none" style="stroke:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));stroke-width:2" marker-end="url(#lc-acc)"/><text x="574" y="190" text-anchor="middle" font-size="11" style="fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">commits tag</text><polyline points="750,149 798,149" fill="none" style="stroke:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));stroke-width:2" marker-end="url(#lc-acc)"/><text x="774" y="141" text-anchor="middle" font-size="11" style="fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">~3 min</text><polyline points="870,174 870,200" fill="none" style="stroke:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));stroke-width:2" marker-end="url(#lc-acc)"/><text x="880" y="191" text-anchor="start" font-size="11" style="fill:var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)));paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">rolls out</text><polyline points="798,240 752,240" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><text x="775" y="263" text-anchor="middle" font-size="11" fill-opacity="0.75" style="fill:currentColor;paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">telemetry</text><polyline points="598,227 322,227" fill="none" stroke="currentColor" stroke-opacity="0.7" stroke-width="1.5" marker-end="url(#lc-arr)"/><text x="460" y="219" text-anchor="middle" font-size="11" fill-opacity="0.75" style="fill:currentColor;paint-order:stroke;stroke:var(--background-primary, var(--md-default-bg-color, #ffffff));stroke-width:4px;stroke-linejoin:round">health · logs</text></svg><figcaption style="font-size:0.85em;color:var(--text-muted, var(--md-default-fg-color--light, #666));margin-top:0.4em">The whole path. You work in the portal and your repo; CI builds and checks the image, then deploys it by committing its tag to the platform repo; Argo CD makes the cluster match Git; Operate and Grafana show how it's running.</figcaption></figure>
 
 ## The portal in four parts
 
 | Section | Use it to |
 |---|---|
-| **Create** | Start a new service from a template. You land here when you open the portal. |
-| **Discover** | Find every service, who owns it, where it runs, and what it depends on. |
-| **Operate** | See how your service is doing and change it safely *(coming next)*. |
-| **Learn** | Read these guides and every service's own docs. |
+| **Create** | Start a new service from a golden path, bring your own container, or deploy a service for the first time. You land here when you open the portal. |
+| **Discover** | Find every service, who owns it, its docs, and its **CI/CD** tab with GitHub Actions runs as they happen. |
+| **Operate** | See each service per environment: deployments, health, logs; investigate, or request a change (scale, resources, database, restart, help). |
+| **Learn** | This handbook, and every service's own docs. |
 
 ## How things get deployed
 
 You never deploy by hand. Everything goes through Git:
 
-1. **Your code** lives in your service's own GitHub repo. Pushing to `main`
-   builds, tests and scans a container image.
-2. **Your deployment settings** live in the platform repo
-   (`omarchy-k8s-platform`, under `apps/<group>/<name>/`). Changes there are
-   pull requests.
-3. **Argo CD** watches the platform repo and keeps the clusters matching it.
-   New images roll out automatically in dev.
+1. **Your code** lives in your service's GitHub repo. Pushing to `main` runs
+   CI: it builds the image, checks it against the
+   [Service Contract](service-contract.md), scans it, and publishes it.
+2. **CI deploys by Git**: its last job commits the new image tag to your
+   service's settings in the platform repo (`apps/<group>/<name>/`).
+3. **Argo CD** watches the platform repo and makes the cluster match it,
+   within about three minutes. To roll back, revert that commit.
+
+Settings changes (replicas, resources, a database) are pull requests to the
+platform repo; the portal's **Operate → Request action** opens them for you.
 
 ## Where services run
 
@@ -32,9 +38,15 @@ You never deploy by hand. Everything goes through Git:
 | staging | `https://<name>.staging.kindell247` | Not enabled yet |
 | prod | `https://<name>.prod.kindell247` | Not enabled yet |
 
-Every service gets HTTPS automatically. Plain `http://` redirects to it.
+Every service gets HTTPS automatically, metrics and logs in Grafana, and alerts
+when it fails.
 
 ## Your first service
 
-Follow [Create a service](create-a-service.md). It takes about five minutes,
-most of it waiting for the first build.
+1. Read the [Service Contract](service-contract.md): five rules every service keeps.
+2. Follow [Create a service](create-a-service.md), or
+   [Bring your own container](bring-your-own-container.md) for any other language.
+3. Watch it build on **Discover → your service → CI/CD**, then see it running
+   on **Operate**.
+
+New words? See the [Glossary](glossary.md).

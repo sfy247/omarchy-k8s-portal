@@ -9,12 +9,17 @@ FROM node:24-trixie-slim
 
 # TechDocs builds docs in-process with mkdocs, kept in its own virtualenv
 ARG MKDOCS_TECHDOCS_CORE_VERSION=1.7.1
+# Renders Obsidian callouts (> [!note]) as admonitions, so the handbook stays
+# one source for Obsidian and the portal
+ARG MKDOCS_CALLOUTS_VERSION=1.17.1
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && \
     apt-get install -y --no-install-recommends python3 python3-venv && \
     python3 -m venv /opt/mkdocs && \
-    /opt/mkdocs/bin/pip install --no-cache-dir "mkdocs-techdocs-core==${MKDOCS_TECHDOCS_CORE_VERSION}" && \
+    /opt/mkdocs/bin/pip install --no-cache-dir \
+      "mkdocs-techdocs-core==${MKDOCS_TECHDOCS_CORE_VERSION}" \
+      "mkdocs-callouts==${MKDOCS_CALLOUTS_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 ENV PATH="/opt/mkdocs/bin:${PATH}"
 

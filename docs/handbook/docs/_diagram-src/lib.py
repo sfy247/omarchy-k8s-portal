@@ -1,6 +1,14 @@
-"""Tiny SVG helpers: consistent boxes, groups, arrows; themed via Obsidian CSS vars."""
-ACC = "var(--interactive-accent, #3b82f6)"
-BG = "var(--background-primary, #ffffff)"
+"""Tiny SVG helpers: consistent boxes, groups, arrows.
+
+Themed by CSS variables so the same SVG reads well in both places the notes
+are shown: Obsidian (--text-normal, --interactive-accent, ...) and the portal's
+TechDocs (mkdocs-material's --md-* variables, set from the portal theme).
+Each color tries Obsidian's variable, then TechDocs', then a light-theme default.
+"""
+FG = "var(--text-normal, var(--md-default-fg-color, #222))"
+MUTED = "var(--text-muted, var(--md-default-fg-color--light, #666))"
+ACC = "var(--interactive-accent, var(--md-accent-fg-color, var(--md-primary-fg-color, #3b82f6)))"
+BG = "var(--background-primary, var(--md-default-bg-color, #ffffff))"
 WARN = []
 
 def esc(s):
@@ -62,7 +70,8 @@ class D:
                 f'<marker id="{self.id}-acc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:{ACC}"/></marker>'
                 f'</defs>')
         svg = (f'<svg viewBox="0 0 {self.w} {self.h}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{esc(self.aria)}" '
-               f'style="width:100%;height:auto;max-width:{self.w}px;font-family:var(--font-interface, system-ui, sans-serif);color:var(--text-normal, #222)">'
+               f'style="display:block;width:100%;height:auto;max-width:{self.w}px;font-family:var(--font-interface, system-ui, sans-serif);color:{FG}">'
                + defs + "".join(self.parts) + '</svg>')
-        return (f'<figure style="margin:1.2em 0">{svg}'
-                f'<figcaption style="font-size:0.85em;color:var(--text-muted);margin-top:0.4em">{esc(caption)}</figcaption></figure>')
+        # Full width: TechDocs' theme otherwise shrinks a figure to its caption
+        return (f'<figure style="margin:1.2em 0;display:block;width:100%;max-width:{self.w}px">{svg}'
+                f'<figcaption style="font-size:0.85em;color:{MUTED};margin-top:0.4em">{esc(caption)}</figcaption></figure>')

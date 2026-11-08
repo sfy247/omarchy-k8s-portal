@@ -1,22 +1,24 @@
-# Platform handbook, rendered by TechDocs in the portal's Learn section.
-# The docs/ folder is also an Obsidian vault: edit in Obsidian, commit, and
-# the portal shows the change.
 site_name: Platform Handbook
 site_description: How to build, ship and run services on the lab platform
 docs_dir: docs
 nav:
   - Home: index.md
-  - Developer guides:
+  - Start here:
       - Getting started: guides/getting-started.md
+      - Glossary: guides/glossary.md
+  - Build:
       - Service Contract: guides/service-contract.md
       - Create a service: guides/create-a-service.md
-      - Deploy a service: guides/deploy-a-service.md
-      - Operate a service: guides/operate.md
-      - Who can do what: guides/permissions.md
-      - Ship a change: guides/ship-a-change.md
+      - Bring your own container: guides/bring-your-own-container.md
       - Add a database: guides/add-a-database.md
+  - Ship:
+      - Ship a change: guides/ship-a-change.md
+      - Deploy a service: guides/deploy-a-service.md
+  - Run:
+      - Operate a service: guides/operate.md
       - Observe and troubleshoot: guides/observability.md
       - Troubleshooting: guides/troubleshooting.md
+      - Who can do what: guides/permissions.md
   - Platform internals:
       - Ansible layout and best practices: 01 Ansible Layout and Best Practices.md
       - Kubernetes setup and structure: 02 Kubernetes Setup and Structure.md
@@ -26,8 +28,15 @@ nav:
       - Security model: 06 Security Model.md
       - Operations runbook: 07 Operations Runbook.md
       - Decisions and gotchas: 08 Decisions and Gotchas.md
+      - Developer portal: 09 Developer Portal.md
+      - Observability platform: 10 Observability Platform.md
+      - CI/CD and delivery: 11 CI-CD and Delivery.md
+      - Golden paths and templates: 12 Golden Paths and Templates.md
 exclude_docs: |
   _diagram-src/
   .obsidian/
 plugins:
   - techdocs-core
+markdown_extensions:
+  - admonition
+  - pymdownx.details

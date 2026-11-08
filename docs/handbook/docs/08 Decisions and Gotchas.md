@@ -1,6 +1,6 @@
 ---
 tags: [kindell247, decisions]
-updated: 2026-10-27
+updated: 2026-11-08
 ---
 
 # Decisions and gotchas
@@ -12,7 +12,7 @@ already solved, so they aren't re-solved or accidentally undone.
 
 | Decision | Alternatives considered | Why |
 |---|---|---|
-| **Two repos**: platform (public) + ansible (private) | One repo | They change at different rates; Argo CD needs the platform repo public; provisioning details stay private |
+| **Three repos**: platform (public), ansible (private), portal (public) | One repo | They change at different rates; Argo CD needs the platform repo public; provisioning details and credentials stay private; the portal's code and templates are a product of their own |
 | **Hub and spoke**: one Argo CD, a cluster per environment | Argo CD per cluster; namespaces per env | Real isolation between environments, with every app visible in one Argo CD UI |
 | **Folders named by content** (`bootstrap/`, `environments/`, `apps/`) | An `argocd/` folder | Folders describe what's in them, not the tool that applies them |
 | **Group folders** `apps/<group>/<app>` | Flat `apps/` | Scales to many app groups, each with its own project and namespace |
@@ -21,7 +21,13 @@ already solved, so they aren't re-solved or accidentally undone.
 | **A loopback IP per cluster** | Different ports per env | Every cluster can serve real :80/:443, so URLs need no port |
 | **Local CA + cert-manager** | Self-signed per app; HTTP only | One CA your machine trusts; certs issued and renewed automatically |
 | **Settings in cluster annotations** | Domain in Git | The platform repo stays domain-free; `lab.yml` is the single source |
-| **Images side-loaded with `kind load`** | Local registry | Simpler for a laptop lab. A registry would be the next step for CI. |
+| **Demo images side-loaded with `kind load`** | Local registry | Simple for the hello-world apps; services use GHCR and CI |
+| **Deploy by Git from CI** (GitOps GitHub App) | Argo CD Image Updater (used first) | No controller with Git write access, no registry polling delay, one less rule per service; each deploy commit links to its CI run |
+| **The Service Contract + one container pipeline** | A template per language with its own CI | Any language runs if the image keeps five rules, checked on every build; fixes land once for every service |
+| **Operate as our own backend** | Community Argo CD / Kubernetes plugins | One view joining Argo CD, Prometheus, Loki, Alertmanager and GitHub; read-only except a restart; uses the portal's own credentials |
+| **Ownership-based permissions** | Allow-all | Owners operate their services; the platform team operates everything; enforced in the policy, Operate's backend and each template |
+| **Create only starts things; Operate changes them** | All templates in Create | Day-2 actions need a service and environment, which Operate already knows |
+| **Postgres per environment, a database per app** | A database server per app | One CloudNativePG cluster per environment is cheap; each app still gets its own database and login |
 | **dev only by default** | All three | Each kind cluster costs RAM; staging and prod are one setting away |
 
 ## Gotchas already solved
@@ -63,6 +69,28 @@ already solved, so they aren't re-solved or accidentally undone.
 > [!bug] `!` commands in Claude Code have no TTY
 > `gh auth login` and sudo prompts can't run there.
 > **Fix:** run interactive commands in your own terminal.
+
+> [!bug] The lab CA rejected client certificate names
+> Its name constraint applies to client certificates too, so `alloy-dev` was
+> refused. **Fix:** every certificate name sits under the lab domain
+> (`alloy.<cluster domain>`, server `ingest.<domain>`).
+
+> [!bug] A plugin-restricted Backstage token can't run templates
+> Backstage drops a static token's per-plugin restrictions when a scaffolder
+> task it started calls another plugin, so the first catalog lookup fails.
+> **Fix:** the automation token is unrestricted and treated as an admin credential.
+
+> [!bug] `yq` rewrites hand-written YAML
+> Setting one key reformats the whole file (blank lines, flow spacing).
+> **Fix:** machine-updated values live in their own small files
+> (`values-image.yaml`, `values-<env>.yaml`).
+
+> [!bug] Ansible's `.json.items` is the dict method
+> `result.json.items` returns Python's `items()`, not the JSON key. **Fix:** `result.json['items']`.
+
+> [!bug] `pkill -f` can hit the clusters
+> kind's containers run on the host's process table, so a broad `pkill -f`
+> pattern can match the portal inside the cluster. **Fix:** kill your own PIDs only.
 
 ## Rules to keep
 
