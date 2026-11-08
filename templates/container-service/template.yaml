@@ -79,8 +79,9 @@ spec:
         database:
           title: PostgreSQL database
           description: >-
-            Lets the service reach the shared Postgres and load its connection
-            details. A platform engineer then runs `make database APP=<group>/<name>`.
+            The service gets its own Postgres database and login, created when
+            the platform pull request merges. It logs in with a client
+            certificate (no passwords); settings arrive as PG* variables.
           type: boolean
           default: false
         deploy:
@@ -275,7 +276,7 @@ spec:
           | Deploy application | `apps/${{ parameters.group }}/${{ parameters.name }}/values-dev.yaml` (CI keeps its image tag current) |
 
           After merging, Argo CD deploys it to `https://${{ parameters.name }}.dev.<lab domain>`.
-          Database requested: ${{ parameters.database }}.
+          Database requested: ${{ parameters.database }} (created on merge; login by client certificate).
         sourcePath: ./platform
 
     - id: register

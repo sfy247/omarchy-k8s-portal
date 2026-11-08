@@ -10,6 +10,7 @@ Words you'll meet in the portal and these guides.
 | **Bring your own container** | The template for any language: your Dockerfile, the platform's pipeline. |
 | **Building blocks** | Shared pieces every template reuses (`templates/_shared`): CI/CD, infrastructure, deployment. |
 | **Catalog** | Everything the portal knows about: services, teams, databases, docs. **Discover** browses it. Each repo describes itself in `catalog-info.yaml`. |
+| **Client certificate** | How services log in to Postgres: a certificate named after their role, issued and renewed by the platform. No passwords. |
 | **CI/CD tab** | A service's GitHub Actions runs, live, on its Discover page. |
 | **Contract check** | The CI step that starts your image the way the platform runs it and checks the Service Contract. |
 | **Delivery pipeline** | Operate's view of one change: commit → CI → image → platform Git → Argo CD sync → rollout. |
@@ -21,6 +22,7 @@ Words you'll meet in the portal and these guides.
 | **GitOps app** | The GitHub App (`kindell247-gitops`) CI uses to commit image tags to the platform repo. It can write to that repo only. |
 | **Golden path** | A supported template for one language (e.g. .NET web service): code that already keeps the contract, tests, a tuned Dockerfile. |
 | **Hub** | The `mgmt` cluster: Argo CD, the portal, observability. Your services don't run here. |
+| **Migration** | A versioned change to a service's database schema, kept in its repo and applied on deploy. |
 | **Loki** | Where logs are stored (7 days). Search them in Grafana or Operate → Logs. |
 | **Operate** | The portal section for running services: deployments, health, logs, actions. |
 | **Owner** | The team (catalog Group) that owns a service. Owners can restart and change it. |

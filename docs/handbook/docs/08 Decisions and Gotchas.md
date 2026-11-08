@@ -28,6 +28,7 @@ already solved, so they aren't re-solved or accidentally undone.
 | **Ownership-based permissions** | Allow-all | Owners operate their services; the platform team operates everything; enforced in the policy, Operate's backend and each template |
 | **Create only starts things; Operate changes them** | All templates in Create | Day-2 actions need a service and environment, which Operate already knows |
 | **Postgres per environment, a database per app** | A database server per app | One CloudNativePG cluster per environment is cheap; each app still gets its own database and login |
+| **Database logins by client certificate, declared in Git** | Passwords created by `make database` | No secret to generate, store or rotate; `database.enabled` creates the role, database and certificate on merge, with no manual step |
 | **dev only by default** | All three | Each kind cluster costs RAM; staging and prod are one setting away |
 
 ## Gotchas already solved

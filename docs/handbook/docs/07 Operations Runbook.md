@@ -17,7 +17,8 @@ Back to [Home](index.md). Run `make` targets from `~/Documents/k8s-apps/omarchy-
 | Ship the hello-world demo apps' code | `make images` (or `ARGS="-e app_images_only=['hello-world/python']"`) |
 | Apply portal config, secrets, CI credentials | `make deploy ARGS="--tags portal"` |
 | Apply Grafana credentials | `make deploy ARGS="--tags observability"` |
-| Create a service's database | `make database APP=<group>/<name>` |
+| Give a service a database | Operate → **Add a database** (or `database.enabled: true`); created on merge |
+| Delete a service's database for good | set `database.enabled: false`, push, then `make database-drop APP=<group>/<name>` |
 | Test the golden path end to end | `make portal-e2e` (creates a public repo), then `make portal-e2e-clean NAME=e2e-…` |
 | Check everything responds | `make verify` |
 | Stop it all (free RAM) | `make teardown` |

@@ -26,8 +26,11 @@ app.MapHealthChecks("/readyz");
 
 {%- if values.database %}
 
-// Connection details arrive as libpq environment variables from the
-// <name>-db Secret (PGHOST, PGUSER, PGPASSWORD, PGDATABASE, ...)
+// The platform gives the pod PGHOST, PGPORT, PGDATABASE, PGUSER and
+// PGSSLMODE=verify-full; login is by client certificate (PGSSLCERT,
+// PGSSLKEY, PGSSLROOTCERT point at it). No password. With Npgsql:
+//   Host=$PGHOST;Database=$PGDATABASE;Username=$PGUSER;SSL Mode=VerifyFull;
+//   SSL Certificate=$PGSSLCERT;SSL Key=$PGSSLKEY;Root Certificate=$PGSSLROOTCERT
 app.MapGet("/db", () => Results.Json(new
 {
     configured = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PGHOST")),

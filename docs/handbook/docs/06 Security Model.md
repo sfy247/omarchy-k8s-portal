@@ -64,6 +64,16 @@ outside in.
 | Network policy: only the gateway in; out to its database, DNS, HTTPS and the Operate APIs | A compromised portal can't wander the cluster |
 | Credentials only in the Secret Ansible writes | Nothing secret in Git or the image |
 
+## Databases
+
+| Control | Why |
+|---|---|
+| Login by **client certificate only** (`hostssl … cert`); no passwords exist | Nothing to leak, rotate or store; certificates renew automatically |
+| A private Postgres CA signs the server and client certificates; apps use `verify-full` | Apps can't be pointed at a fake server; only platform-issued certificates log in |
+| Each app has its own role, owning only its own database | One service can't read another's data |
+| Roles and databases are `retain`ed when access is switched off | Turning access off never deletes data; dropping is deliberate |
+| Only pods with the client label reach port 5432; plaintext is rejected | Defense in depth around the certificate check |
+
 ## Observability
 
 | Control | Why |

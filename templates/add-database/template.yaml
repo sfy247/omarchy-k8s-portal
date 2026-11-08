@@ -6,7 +6,8 @@ metadata:
   name: add-database
   title: Add a database
   description: >-
-    Give a service access to the shared Postgres: network access and its connection Secret.
+    Give a service its own Postgres database: created on merge, login by client
+    certificate (no passwords).
   tags: [operate, kubernetes, approved]
 spec:
   owner: group:default/platform-team
@@ -73,8 +74,9 @@ spec:
         description: |
           Sets `database.enabled: true` in `values.yaml` (every environment).
 
-          After merging, a platform engineer creates the database and its Secret:
-          `make database APP=${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}` in omarchy-k8s-ansible.
+          On merge, Argo CD creates the service's own database and login, and a
+          client certificate it logs in with (no passwords). The pods get PG*
+          connection settings and restart with the certificate mounted.
 
           Requested in the developer portal (Operate) for `${{ parameters.service }}`.
         sourcePath: ./platform

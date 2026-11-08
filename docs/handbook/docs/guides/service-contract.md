@@ -24,6 +24,16 @@ lists which rule failed.
 
 Rules 7 and 8 come with every template; code review keeps them.
 
+## If your service uses a database
+
+- Read the connection from the standard `PG*` variables the platform sets; log in
+  with the client certificate it mounts ([Add a database](add-a-database.md)).
+  Never ship credentials in the image.
+- `/healthz` must **not** depend on the database: liveness answers "is the
+  process alive", and a database outage must not make Kubernetes restart
+  healthy pods. `/readyz` may check it.
+- Your schema comes from **migrations** in your repo, applied on deploy.
+
 ## Request logs: the shape
 
 ```json
