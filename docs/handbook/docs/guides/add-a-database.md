@@ -56,9 +56,9 @@ certificate are refused.
 
 ## 4. Structure it with migrations
 
-The database starts **empty**. Your service owns its schema: keep migrations
-in your repo (EF Core, Flyway, Alembic, Prisma, …) and apply them on deploy,
-never by hand. Your login owns the database, so it can run them.
+The database starts **empty**. Its tables come from **migrations**: numbered
+SQL files in your repo's `db/migrations/`, applied automatically before each
+deploy. See [Database migrations](database-migrations.md).
 
 Keep `/healthz` independent of the database (see the
 [Service Contract](service-contract.md)), so a database hiccup never makes

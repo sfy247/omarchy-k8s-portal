@@ -33,6 +33,7 @@ Every service template runs the same stages, using the shared blocks in
 | Generate CI/CD | `fetch:template` | `cicd/repo` (`ci.yaml` → `<language>-service.yaml`) |
 | Push | `github:repo:push` | |
 | Provision infrastructure | `fetch:template` | `infra/` (`values.yaml`) |
+| Database (if ticked) | `fetch:template` | `database/` (`db/migrations/V1__init.sql`) |
 | Deploy application | `fetch:template` | `deploy/` (`values-dev.yaml`, tag = the pushed commit) |
 | Platform pull request | `publish:github:pull-request` | |
 | Register | `catalog:register` | |

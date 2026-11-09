@@ -11,6 +11,7 @@ nav:
       - Create a service: guides/create-a-service.md
       - Bring your own container: guides/bring-your-own-container.md
       - Add a database: guides/add-a-database.md
+      - Database migrations: guides/database-migrations.md
   - Ship:
       - Ship a change: guides/ship-a-change.md
       - Deploy a service: guides/deploy-a-service.md

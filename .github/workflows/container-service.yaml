@@ -3,6 +3,8 @@
 #
 #   image:      build the Dockerfile -> Service Contract check -> scan
 #               -> push ghcr.io/<owner>/<repo>:sha-<commit> (main only)
+#               -> if db/migrations exists: test them on an empty Postgres and
+#                  push ghcr.io/<owner>/<repo>/migrations:sha-<commit>
 #   deploy-dev: commit that tag to the service's dev values in the platform
 #               repo (GitOps GitHub App); Argo CD rolls it out
 #
@@ -21,6 +23,10 @@ on:
         description: Dockerfile, relative to the repo root (default <project-path>/Dockerfile)
         type: string
         default: ""
+      migrations-path:
+        description: SQL migrations (V<version>__<description>.sql), relative to the repo root
+        type: string
+        default: db/migrations
       gitops-repository:
         description: Platform repo name (same owner); empty = don't deploy
         type: string
@@ -45,6 +51,14 @@ jobs:
     permissions:
       contents: read
       packages: write
+    # An empty database to test migrations against (only used if there are any)
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 2s --health-timeout 2s --health-retries 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -73,6 +87,14 @@ jobs:
         with:
           image: ${{ steps.meta.outputs.tags }}
 
+      # A broken migration stops the run before anything is published
+      - name: Database migrations
+        if: hashFiles(format('{0}/*.sql', inputs.migrations-path)) != ''
+        uses: sfy247/omarchy-k8s-portal/.github/actions/db-migrations@main
+        with:
+          migrations-path: ${{ inputs.migrations-path }}
+          image: ghcr.io/${{ github.repository }}/migrations:sha-${{ github.sha }}
+
       # Push only if no fixable critical vulnerabilities
       - name: Scan image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -93,6 +115,13 @@ jobs:
       - name: Push
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: docker push "${{ steps.meta.outputs.tags }}"
+
+      # Same tag as the app, so code and schema always ship together
+      - name: Push migrations image
+        if: >-
+          github.event_name == 'push' && github.ref == 'refs/heads/main'
+          && hashFiles(format('{0}/*.sql', inputs.migrations-path)) != ''
+        run: docker push "$(echo 'ghcr.io/${{ github.repository }}/migrations:sha-${{ github.sha }}' | tr '[:upper:]' '[:lower:]')"
 
   # Deploy to dev by Git: the new tag goes into the platform repo, Argo CD
   # rolls it out. Only for main, and only once the image is published.

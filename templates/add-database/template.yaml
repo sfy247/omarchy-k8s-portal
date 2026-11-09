@@ -32,6 +32,14 @@ spec:
           type: string
           enum: [dev]
           default: dev
+        migrations:
+          title: Run its migrations before each deploy
+          description: >-
+            Tick if the service's repo has db/migrations (V1__….sql files); CI
+            then publishes a migrations image and each deploy applies new ones
+            first. You can add this later.
+          type: boolean
+          default: false
 
   steps:
     - id: platform
@@ -62,6 +70,7 @@ spec:
         targetPath: ./platform/apps/${{ steps['service'].output.entity.spec.system }}/${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}/values.yaml
         set:
           database.enabled: true
+          migrations.enabled: ${{ parameters.migrations }}
 
     - id: platform-pr
       name: Open the pull request
@@ -72,7 +81,7 @@ spec:
         title: "Database access for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}"
         commitMessage: "Database access for ${{ steps['service'].output.entity.metadata.annotations['backstage.io/kubernetes-label-selector'] | replace('app.kubernetes.io/name=', '') }}"
         description: |
-          Sets `database.enabled: true` in `values.yaml` (every environment).
+          Sets `database.enabled: true` (and `migrations.enabled: ${{ parameters.migrations }}`) in `values.yaml` (every environment).
 
           On merge, Argo CD creates the service's own database and login, and a
           client certificate it logs in with (no passwords). The pods get PG*

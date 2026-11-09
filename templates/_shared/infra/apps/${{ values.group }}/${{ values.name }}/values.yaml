@@ -18,7 +18,13 @@ resources:
   limits: { memory: 256Mi }
 {%- if values.database %}
 
-# Reach the shared Postgres and load the ${{ values.name }}-db Secret
+# Its own Postgres database and login; connects with a client certificate
 database:
+  enabled: true
+{%- endif %}
+{%- if values.migrations %}
+
+# Apply db/migrations before each rollout (migrate job, same tag as the app)
+migrations:
   enabled: true
 {%- endif %}

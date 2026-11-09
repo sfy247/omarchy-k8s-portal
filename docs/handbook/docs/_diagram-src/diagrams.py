@@ -538,3 +538,28 @@ def db_login():
             d.arrow([(x - 25, 90), (x - 2, 90)], accent=True)
     d.text(20, 160, "Fails: no TLS · fake server · no or foreign certificate · someone else's certificate · another service's database", size=11, anchor="start", halo=False)
     return d
+
+
+# ---------------------------------------------------------------- guides: migrations
+@reg("migrations", "Code and schema ship together. CI proves the migrations apply to an empty database; on deploy, Argo CD applies the new ones before the new version starts, and stops if they fail, so the running version stays.")
+def migrations():
+    d = D("mg", 980, 280, "Push, CI tests migrations on an empty Postgres and publishes app and migrations images; Argo CD runs the migrate job before rolling out the app")
+    d.box(20, 50, 150, 70, "service repo", "src/ + db/migrations", sub2="V1__init.sql …")
+    d.group(200, 16, 330, 140, "CI (shared pipeline)")
+    d.box(220, 46, 140, 50, "test migrations", "empty Postgres, ×2")
+    d.box(375, 46, 140, 50, "publish images", "app + migrations")
+    d.box(375, 108, 140, 40, "deploy commit", "tag sha-<commit>", accent=True)
+    d.arrow([(170, 85), (190, 85), (190, 71), (218, 71)], "push", (190, 60))
+    d.arrow([(360, 71), (373, 71)])
+    d.arrow([(445, 96), (445, 106)])
+    d.group(560, 16, 400, 250, "Argo CD sync, in waves", accent=True)
+    d.box(580, 46, 360, 46, "wave 0: database · login · certificate", "already there after the first deploy")
+    d.box(580, 112, 360, 56, "wave 1: migrate job", "applies new files, records each with its checksum", accent=True)
+    d.box(580, 188, 360, 46, "wave 2: new app version rolls out", "only if wave 1 succeeded")
+    d.arrow([(515, 128), (548, 128), (548, 69), (578, 69)], accent=True)
+    d.arrow([(760, 92), (760, 110)])
+    d.arrow([(760, 168), (760, 186)], "succeeded", (770, 181), anchor="start", accent=True)
+    d.text(20, 200, "If the migrate job fails:", size=11, anchor="start", bold=True, halo=False)
+    d.text(20, 220, "the sync stops, the running version stays,", size=11, anchor="start", halo=False)
+    d.text(20, 238, "and Operate shows Migrate: Failed with the error.", size=11, anchor="start", halo=False)
+    return d

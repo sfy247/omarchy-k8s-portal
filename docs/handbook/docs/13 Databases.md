@@ -34,7 +34,7 @@ passwords and nobody in the loop**:
 | Where the certificate is | Secret `<name>-db-cert` in the service's namespace, mounted at `/etc/postgres-client` |
 | How the app finds it | `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGSSLMODE=verify-full`, `PGSSLCERT`, `PGSSLKEY`, `PGSSLROOTCERT` |
 | Who issues certificates | cert-manager, ClusterIssuer `postgres` (a private CA used only for this) |
-| Schema | The service's own **migrations** (see *What's next*) |
+| Schema | The service's own **migrations**, applied before each deploy |
 
 ## From request to connected
 
@@ -138,18 +138,24 @@ libpq-based clients (psycopg, pgx, psql) read these with no code. Npgsql, Node
 | Java: can't read the key | pgjdbc and key formats | The key is PKCS#8; pass `sslkey` and check the driver version's supported formats |
 | `no pg_hba.conf entry` / timeout | Network policy | The pod must carry the database client label (the chart adds it with `database.enabled`) |
 
-## What's next: migrations
+## Migrations
 
-The database starts **empty**; the service owns its structure through
-**migrations** (versioned schema changes in its repo). The planned platform
-support:
+The database starts **empty**; each service owns its structure through
+**migrations**: `V<version>__<description>.sql` files in its repo's
+`db/migrations/`. CI tests them on an empty Postgres and publishes a
+migrations image (platform migrator + the files) with the app's tag; on every
+deploy Argo CD runs a **migrate job** (sync wave 1) with the service's own
+login, before the new version (wave 2). Each file runs in one transaction and
+is recorded in `schema_migrations` with a checksum; an edited or missing
+applied file stops the deploy and the running version stays. Developer guide:
+[Database migrations](guides/database-migrations.md).
 
-- A `migrations` option in the service chart: run a command from the
-  service's own image (e.g. `dotnet app.dll --migrate`, `flyway migrate`) as a
-  **job before each deploy**. If it fails, the old version keeps running.
-- The .NET golden path ships with EF Core and a first migration.
-- Changes follow **expand, then contract**: add first, remove in a later
-  release, so old and new versions both work during a rollout.
+| Piece | Path |
+|---|---|
+| The migrator (`migrate.sh`, on `psql`) and its image | omarchy-k8s-portal `.github/actions/db-migrations/` |
+| CI: test and publish | `container-service.yaml`, step *Database migrations* |
+| The migrate Job and its network policy | omarchy-k8s-platform `charts/web-service/templates/migrations.yaml` |
+| The example first migration | omarchy-k8s-portal `templates/_shared/database/` |
 
 ## Where it lives
 

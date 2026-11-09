@@ -1,0 +1,51 @@
+# A service's database migrations in CI: build its migrations image (the
+# platform migrator + db/migrations), test it against an empty Postgres twice
+# (everything applies, then nothing is left to apply). Tag:
+# ghcr.io/<owner>/<repo>/migrations:sha-<commit>. Needs a Postgres service on
+# localhost:5432 (user postgres, password postgres) in the calling job. The
+# calling workflow pushes it with the app image.
+name: db-migrations
+description: Test and publish a service's SQL migrations
+inputs:
+  migrations-path:
+    description: Folder with V<version>__<description>.sql files
+    default: db/migrations
+  image:
+    description: Migrations image to build, e.g. ghcr.io/owner/repo/migrations:sha-<commit>
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Build the migrations image
+      shell: bash
+      env:
+        SRC: ${{ inputs.migrations-path }}
+        IMAGE: ${{ inputs.image }}
+      run: |
+        set -euo pipefail
+        IMAGE=${IMAGE,,}
+        ctx=$(mktemp -d)
+        cp "${{ github.action_path }}/migrate.sh" "${{ github.action_path }}/Dockerfile" "$ctx/"
+        cp -r "$SRC" "$ctx/migrations"
+        docker build -q -t "$IMAGE" "$ctx" >/dev/null
+        echo "Built $IMAGE with $(ls "$SRC" | wc -l) migration(s)"
+
+    - name: Test against an empty Postgres
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: |
+        set -euo pipefail
+        IMAGE=${IMAGE,,}
+        pg="-e PGHOST=127.0.0.1 -e PGPORT=5432 -e PGUSER=postgres -e PGPASSWORD=postgres -e PGDATABASE=postgres -e PGSSLMODE=disable"
+        echo "First run (applies everything):"
+        docker run --rm --network host $pg "$IMAGE"
+        echo "Second run (must apply nothing):"
+        out=$(docker run --rm --network host $pg "$IMAGE")
+        echo "$out"
+        echo "$out" | grep -q '"applied":"0"' || { echo "::error::Migrations aren't idempotent: a second run applied something"; exit 1; }
+        {
+          echo "### Database migrations: passed"
+          echo
+          echo "Applied to an empty Postgres, then re-run with nothing left to apply."
+        } >> "$GITHUB_STEP_SUMMARY"

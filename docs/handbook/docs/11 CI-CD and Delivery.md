@@ -16,7 +16,8 @@ its next run.
 
 | Workflow / action | What it does |
 |---|---|
-| `.github/workflows/container-service.yaml` | The language-neutral half: build the image → **Service Contract** check → Trivy scan (fixable critical CVEs stop it) → push `ghcr.io/<owner>/<repo>:sha-<commit>` → **deploy-dev** |
+| `.github/workflows/container-service.yaml` | The language-neutral half: build the image → **Service Contract** check → **database migrations** test (if `db/migrations` exists) → Trivy scan (fixable critical CVEs stop it) → push `ghcr.io/<owner>/<repo>:sha-<commit>` (and `…/migrations:sha-<commit>`) → **deploy-dev** |
+| `.github/actions/db-migrations` | The platform migrator (`migrate.sh`) and the migrations image; tests on an empty Postgres, twice |
 | `.github/workflows/<language>-service.yaml` | A golden path's build and tests, then calls `container-service.yaml` (e.g. `dotnet-service.yaml`) |
 | `.github/actions/service-contract` | `check.sh`: runs the image as UID 10001, read-only, no capabilities; checks port 8080, `/healthz`, `/readyz`, `/metrics`, JSON logs |
 | `.github/actions/gitops-update` | Commits one value (the image tag) to the platform repo, retrying on races |

@@ -149,6 +149,17 @@ spec:
         values:
           name: ${{ parameters.name }}
 
+    # Database: an example first migration, applied before each rollout
+    - id: database-files
+      name: Generate the database migrations folder
+      if: ${{ parameters.database and parameters.mode == 'new' }}
+      action: fetch:template
+      input:
+        url: ${{ steps['platform'].output.entity.metadata.annotations['platform.lab/building-blocks'] }}/database
+        targetPath: ./service
+        values:
+          name: ${{ parameters.name }}
+
     # ---- Generate CI/CD ----
     - id: ci
       name: Generate CI/CD (pipeline)
@@ -242,6 +253,7 @@ spec:
           name: ${{ parameters.name }}
           group: ${{ parameters.group }}
           database: ${{ parameters.database }}
+          migrations: ${{ parameters.database }}
           image: ghcr.io/${{ (parameters.repoUrl | parseRepoUrl).owner | lower }}/${{ (parameters.repoUrl | parseRepoUrl).repo | lower }}
 
     - id: deploy

@@ -585,6 +585,34 @@ export async function createRouter(options: {
       deployedSha &&
       latest.sha !== deployedSha;
 
+    // The migrate Job (web-service chart, migrations.enabled) runs as a sync
+    // hook; Argo CD records its result in the last operation
+    const migrateStage = () => {
+      const hook = ((op as any)?.syncResult?.resources ?? []).find(
+        (r: any) =>
+          r.kind === 'Job' &&
+          r.hookType === 'Sync' &&
+          String(r.name).endsWith('-migrate'),
+      );
+      if (!hook) return [];
+      const phase = hook.hookPhase ?? hook.status;
+      let state: State = 'running';
+      if (phase === 'Succeeded') state = 'ok';
+      else if (phase === 'Failed' || phase === 'Error') state = 'failed';
+      return [
+        stage(
+          'migrate',
+          'Migrate',
+          state,
+          `Database migrations: ${phase ?? 'unknown'}`,
+          {
+            detail: hook.message,
+            at: op?.finishedAt ?? op?.startedAt,
+          },
+        ),
+      ];
+    };
+
     const stages = [
       builtByCi && latest
         ? stage('commit', 'Commit', 'ok', latest.message, {
@@ -652,6 +680,7 @@ export async function createRouter(options: {
           url: platformCommit?.url,
         },
       ),
+      ...migrateStage(),
       stage(
         'sync',
         'Argo CD sync',

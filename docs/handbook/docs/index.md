@@ -29,7 +29,7 @@ are one setting away). Everything is reachable over HTTPS at `*.kindell247`.
 | Section | Guides |
 |---|---|
 | **Start here** | [Getting started](guides/getting-started.md) · [Glossary](guides/glossary.md) |
-| **Build** | [Service Contract](guides/service-contract.md) · [Create a service](guides/create-a-service.md) · [Bring your own container](guides/bring-your-own-container.md) · [Add a database](guides/add-a-database.md) |
+| **Build** | [Service Contract](guides/service-contract.md) · [Create a service](guides/create-a-service.md) · [Bring your own container](guides/bring-your-own-container.md) · [Add a database](guides/add-a-database.md) · [Database migrations](guides/database-migrations.md) |
 | **Ship** | [Ship a change](guides/ship-a-change.md) · [Deploy a service](guides/deploy-a-service.md) |
 | **Run** | [Operate a service](guides/operate.md) · [Observe and troubleshoot](guides/observability.md) · [Troubleshooting](guides/troubleshooting.md) · [Who can do what](guides/permissions.md) |
 
